@@ -1,0 +1,16 @@
+{
+  "chunk-3572f1c89e2ac0169604f7170a61c338": {
+    "tokens": 73,
+    "content": "LightRAG是一个基于图的RAG框架，由香港大学数据科学团队(HKUDS)开发。\n    该框架使用知识图谱来增强检索能力，支持多种查询模式。\n    LightRAG的核心优势是将实体和关系显式建模，而不是仅依赖向量检索。",
+    "chunk_order_index": 0,
+    "full_doc_id": "doc-3572f1c89e2ac0169604f7170a61c338",
+    "file_path": "unknown_source",
+    "llm_cache_list": [
+      "default:extract:e5716098392e22d0e46a5cab03bed439",
+      "default:extract:c1d9abdebc5c4e1910695b9be5924850"
+    ],
+    "create_time": 1769754977,
+    "update_time": 1769755026,
+    "_id": "chunk-3572f1c89e2ac0169604f7170a61c338"
+  }
+}

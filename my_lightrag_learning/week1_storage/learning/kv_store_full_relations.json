@@ -1,0 +1,34 @@
+{
+  "doc-3572f1c89e2ac0169604f7170a61c338": {
+    "relation_pairs": [
+      [
+        "LightRAG",
+        "Relationships"
+      ],
+      [
+        "Hong Kong University Data Science Team (HKUDS)",
+        "LightRAG"
+      ],
+      [
+        "Entities",
+        "LightRAG"
+      ],
+      [
+        "LightRAG",
+        "Query Modes"
+      ],
+      [
+        "LightRAG",
+        "Vector Retrieval"
+      ],
+      [
+        "Knowledge Graph",
+        "LightRAG"
+      ]
+    ],
+    "count": 6,
+    "create_time": 1769755027,
+    "update_time": 1769755027,
+    "_id": "doc-3572f1c89e2ac0169604f7170a61c338"
+  }
+}

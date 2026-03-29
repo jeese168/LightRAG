@@ -1,0 +1,74 @@
+{
+  "LightRAG": {
+    "chunk_ids": [
+      "chunk-3572f1c89e2ac0169604f7170a61c338"
+    ],
+    "count": 1,
+    "create_time": 1769755026,
+    "update_time": 1769755026,
+    "_id": "LightRAG"
+  },
+  "Hong Kong University Data Science Team (HKUDS)": {
+    "chunk_ids": [
+      "chunk-3572f1c89e2ac0169604f7170a61c338"
+    ],
+    "count": 1,
+    "create_time": 1769755026,
+    "update_time": 1769755026,
+    "_id": "Hong Kong University Data Science Team (HKUDS)"
+  },
+  "Knowledge Graph": {
+    "chunk_ids": [
+      "chunk-3572f1c89e2ac0169604f7170a61c338"
+    ],
+    "count": 1,
+    "create_time": 1769755026,
+    "update_time": 1769755026,
+    "_id": "Knowledge Graph"
+  },
+  "Entities": {
+    "chunk_ids": [
+      "chunk-3572f1c89e2ac0169604f7170a61c338"
+    ],
+    "count": 1,
+    "create_time": 1769755026,
+    "update_time": 1769755026,
+    "_id": "Entities"
+  },
+  "Relationships": {
+    "chunk_ids": [
+      "chunk-3572f1c89e2ac0169604f7170a61c338"
+    ],
+    "count": 1,
+    "create_time": 1769755026,
+    "update_time": 1769755026,
+    "_id": "Relationships"
+  },
+  "Vector Retrieval": {
+    "chunk_ids": [
+      "chunk-3572f1c89e2ac0169604f7170a61c338"
+    ],
+    "count": 1,
+    "create_time": 1769755026,
+    "update_time": 1769755026,
+    "_id": "Vector Retrieval"
+  },
+  "Retrieval-Augmented Generation (RAG)": {
+    "chunk_ids": [
+      "chunk-3572f1c89e2ac0169604f7170a61c338"
+    ],
+    "count": 1,
+    "create_time": 1769755026,
+    "update_time": 1769755026,
+    "_id": "Retrieval-Augmented Generation (RAG)"
+  },
+  "Query Modes": {
+    "chunk_ids": [
+      "chunk-3572f1c89e2ac0169604f7170a61c338"
+    ],
+    "count": 1,
+    "create_time": 1769755026,
+    "update_time": 1769755026,
+    "_id": "Query Modes"
+  }
+}
