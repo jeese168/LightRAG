@@ -115,12 +115,13 @@ from lightrag.utils import (
 from lightrag.types import KnowledgeGraph
 from dotenv import load_dotenv
 
-# use the .env that is inside the current folder
-# allows to use different .env file for each lightrag instance
-# the OS environment variables take precedence over the .env file
+# 使用当前目录中的 .env
+# 允许每个 lightrag 实例使用不同的 .env 文件
+# 操作系统环境变量优先于 .env 文件
 load_dotenv(dotenv_path=".env", override=False)
 
 # TODO: TO REMOVE @Yannick
+# 同样是读配置，但是是老式方法准备被移除
 config = configparser.ConfigParser()
 config.read("config.ini", "utf-8")
 
@@ -128,88 +129,88 @@ config.read("config.ini", "utf-8")
 @final
 @dataclass
 class LightRAG:
-    """LightRAG: Simple and Fast Retrieval-Augmented Generation."""
+    """LightRAG：简单且高效的检索增强生成。"""
 
-    # Directory
+    # 目录
     # ---
 
     working_dir: str = field(default="./rag_storage")
-    """Directory where cache and temporary files are stored."""
+    """缓存和临时文件的存储目录。"""
 
-    # Storage
+    # 存储
     # ---
 
     kv_storage: str = field(default="JsonKVStorage")
-    """Storage backend for key-value data."""
+    """键值数据的存储后端。"""
 
     vector_storage: str = field(default="NanoVectorDBStorage")
-    """Storage backend for vector embeddings."""
+    """向量嵌入的存储后端。"""
 
     graph_storage: str = field(default="NetworkXStorage")
-    """Storage backend for knowledge graphs."""
+    """知识图谱的存储后端。"""
 
     doc_status_storage: str = field(default="JsonDocStatusStorage")
-    """Storage type for tracking document processing statuses."""
+    """用于追踪文档处理状态的存储类型。"""
 
-    # Workspace
+    # 工作区
     # ---
 
     workspace: str = field(default_factory=lambda: os.getenv("WORKSPACE", ""))
-    """Workspace for data isolation. Defaults to empty string if WORKSPACE environment variable is not set."""
+    """用于数据隔离的工作区。若未设置 WORKSPACE 环境变量，默认为空字符串。"""
 
     # ---
-    # TODO: Deprecated, use setup_logger in utils.py instead
+    # TODO: 已弃用，请改用 utils.py 中的 setup_logger
     log_level: int | None = field(default=None)
     log_file_path: str | None = field(default=None)
 
-    # Query parameters
+    # 查询参数
     # ---
 
     top_k: int = field(default=get_env_value("TOP_K", DEFAULT_TOP_K, int))
-    """Number of entities/relations to retrieve for each query."""
+    """每次查询要检索的实体/关系数量。"""
 
     chunk_top_k: int = field(
         default=get_env_value("CHUNK_TOP_K", DEFAULT_CHUNK_TOP_K, int)
     )
-    """Maximum number of chunks in context."""
+    """上下文中允许的最大文本块数量。"""
 
     max_entity_tokens: int = field(
         default=get_env_value("MAX_ENTITY_TOKENS", DEFAULT_MAX_ENTITY_TOKENS, int)
     )
-    """Maximum number of tokens for entity in context."""
+    """上下文中实体部分的最大 token 数。"""
 
     max_relation_tokens: int = field(
         default=get_env_value("MAX_RELATION_TOKENS", DEFAULT_MAX_RELATION_TOKENS, int)
     )
-    """Maximum number of tokens for relation in context."""
+    """上下文中关系部分的最大 token 数。"""
 
     max_total_tokens: int = field(
         default=get_env_value("MAX_TOTAL_TOKENS", DEFAULT_MAX_TOTAL_TOKENS, int)
     )
-    """Maximum total tokens in context (including system prompt, entities, relations and chunks)."""
+    """上下文的最大总 token 数（包含系统提示词、实体、关系与文本块）。"""
 
     cosine_threshold: int = field(
         default=get_env_value("COSINE_THRESHOLD", DEFAULT_COSINE_THRESHOLD, int)
     )
-    """Cosine threshold of vector DB retrieval for entities, relations and chunks."""
+    """向量库检索实体、关系与文本块时的余弦相似度阈值。"""
 
     related_chunk_number: int = field(
         default=get_env_value("RELATED_CHUNK_NUMBER", DEFAULT_RELATED_CHUNK_NUMBER, int)
     )
-    """Number of related chunks to grab from single entity or relation."""
+    """从单个实体或关系中获取的相关文本块数量。"""
 
     kg_chunk_pick_method: str = field(
         default=get_env_value("KG_CHUNK_PICK_METHOD", DEFAULT_KG_CHUNK_PICK_METHOD, str)
     )
-    """Method for selecting text chunks: 'WEIGHT' for weight-based selection, 'VECTOR' for embedding similarity-based selection."""
+    """选择文本块的方法：'WEIGHT' 表示按权重选择，'VECTOR' 表示按嵌入相似度选择。"""
 
-    # Entity extraction
+    # 实体抽取
     # ---
 
     entity_extract_max_gleaning: int = field(
         default=get_env_value("MAX_GLEANING", DEFAULT_MAX_GLEANING, int)
     )
-    """Maximum number of entity extraction attempts for ambiguous content."""
+    """对含糊内容的实体抽取最大尝试次数。"""
 
     force_llm_summary_on_merge: int = field(
         default=get_env_value(
@@ -217,26 +218,26 @@ class LightRAG:
         )
     )
 
-    # Text chunking
+    # 文本分块
     # ---
 
     chunk_token_size: int = field(default=int(os.getenv("CHUNK_SIZE", 1200)))
-    """Maximum number of tokens per text chunk when splitting documents."""
+    """拆分文档时每个文本块的最大 token 数。"""
 
     chunk_overlap_token_size: int = field(
         default=int(os.getenv("CHUNK_OVERLAP_SIZE", 100))
     )
-    """Number of overlapping tokens between consecutive text chunks to preserve context."""
+    """相邻文本块之间的重叠 token 数，用于保留上下文。"""
 
     tokenizer: Optional[Tokenizer] = field(default=None)
     """
-    A function that returns a Tokenizer instance.
-    If None, and a `tiktoken_model_name` is provided, a TiktokenTokenizer will be created.
-    If both are None, the default TiktokenTokenizer is used.
+    返回 Tokenizer 实例的函数。
+    如果为 None 且提供了 `tiktoken_model_name`，将创建 TiktokenTokenizer。
+    如果两者都为 None，则使用默认的 TiktokenTokenizer。
     """
 
     tiktoken_model_name: str = field(default="gpt-4o-mini")
-    """Model name used for tokenization when chunking text with tiktoken. Defaults to `gpt-4o-mini`."""
+    """使用 tiktoken 分块时的分词模型名称。默认 `gpt-4o-mini`。"""
 
     chunking_func: Callable[
         [
@@ -250,45 +251,45 @@ class LightRAG:
         Union[List[Dict[str, Any]], Awaitable[List[Dict[str, Any]]]],
     ] = field(default_factory=lambda: chunking_by_token_size)
     """
-    Custom chunking function for splitting text into chunks before processing.
+    处理前用于将文本切分为分块的自定义函数。
 
-    The function can be either synchronous or asynchronous.
+    函数既可以是同步的，也可以是异步的。
 
-    The function should take the following parameters:
+    函数应接收以下参数：
 
-        - `tokenizer`: A Tokenizer instance to use for tokenization.
-        - `content`: The text to be split into chunks.
-        - `split_by_character`: The character to split the text on. If None, the text is split into chunks of `chunk_token_size` tokens.
-        - `split_by_character_only`: If True, the text is split only on the specified character.
-        - `chunk_overlap_token_size`: The number of overlapping tokens between consecutive chunks.
-        - `chunk_token_size`: The maximum number of tokens per chunk.
+        - `tokenizer`: 用于分词的 Tokenizer 实例。
+        - `content`: 需要切分为分块的文本。
+        - `split_by_character`: 按指定字符切分；如果为 None，则按 `chunk_token_size` 的 token 数切分。
+        - `split_by_character_only`: 如果为 True，则仅按指定字符切分。
+        - `chunk_overlap_token_size`: 相邻分块之间的重叠 token 数。
+        - `chunk_token_size`: 每个分块的最大 token 数。
 
 
-    The function should return a list of dictionaries (or an awaitable that resolves to a list),
-    where each dictionary contains the following keys:
-        - `tokens` (int): The number of tokens in the chunk.
-        - `content` (str): The text content of the chunk.
-        - `chunk_order_index` (int): Zero-based index indicating the chunk's order in the document.
+    函数应返回一个字典列表（或可等待对象返回字典列表），
+    其中每个字典包含以下键：
+        - `tokens` (int): 分块中的 token 数。
+        - `content` (str): 分块的文本内容。
+        - `chunk_order_index` (int): 分块在文档中的顺序索引（从 0 开始）。
 
-    Defaults to `chunking_by_token_size` if not specified.
+    未指定时默认使用 `chunking_by_token_size`。
     """
 
-    # Embedding
+    # 向量嵌入
     # ---
 
     embedding_func: EmbeddingFunc | None = field(default=None)
-    """Function for computing text embeddings. Must be set before use."""
+    """用于计算文本嵌入的函数，使用前必须设置。"""
 
     embedding_token_limit: int | None = field(default=None, init=False)
-    """Token limit for embedding model. Set automatically from embedding_func.max_token_size in __post_init__."""
+    """嵌入模型的 token 上限。会在 __post_init__ 中从 embedding_func.max_token_size 自动设置。"""
 
     embedding_batch_num: int = field(default=int(os.getenv("EMBEDDING_BATCH_NUM", 10)))
-    """Batch size for embedding computations."""
+    """嵌入计算的批量大小。"""
 
     embedding_func_max_async: int = field(
         default=int(os.getenv("EMBEDDING_FUNC_MAX_ASYNC", 8))
     )
-    """Maximum number of concurrent embedding function calls."""
+    """嵌入函数并发调用的最大数量。"""
 
     embedding_cache_config: dict[str, Any] = field(
         default_factory=lambda: {
@@ -297,96 +298,96 @@ class LightRAG:
             "use_llm_check": False,
         }
     )
-    """Configuration for embedding cache.
-    - enabled: If True, enables caching to avoid redundant computations.
-    - similarity_threshold: Minimum similarity score to use cached embeddings.
-    - use_llm_check: If True, validates cached embeddings using an LLM.
+    """嵌入缓存配置。
+    - enabled: 为 True 时启用缓存以避免重复计算。
+    - similarity_threshold: 使用缓存嵌入的最小相似度阈值。
+    - use_llm_check: 为 True 时使用 LLM 校验缓存嵌入。
     """
 
     default_embedding_timeout: int = field(
         default=int(os.getenv("EMBEDDING_TIMEOUT", DEFAULT_EMBEDDING_TIMEOUT))
     )
 
-    # LLM Configuration
+    # LLM 配置
     # ---
 
     llm_model_func: Callable[..., object] | None = field(default=None)
-    """Function for interacting with the large language model (LLM). Must be set before use."""
+    """与大语言模型（LLM）交互的函数，使用前必须设置。"""
 
     llm_model_name: str = field(default="gpt-4o-mini")
-    """Name of the LLM model used for generating responses."""
+    """用于生成响应的 LLM 模型名称。"""
 
     summary_max_tokens: int = field(
         default=int(os.getenv("SUMMARY_MAX_TOKENS", DEFAULT_SUMMARY_MAX_TOKENS))
     )
-    """Maximum tokens allowed for entity/relation description."""
+    """实体/关系描述允许的最大 token 数。"""
 
     summary_context_size: int = field(
         default=int(os.getenv("SUMMARY_CONTEXT_SIZE", DEFAULT_SUMMARY_CONTEXT_SIZE))
     )
-    """Maximum number of tokens allowed per LLM response."""
+    """每次 LLM 响应允许的最大 token 数。"""
 
     summary_length_recommended: int = field(
         default=int(
             os.getenv("SUMMARY_LENGTH_RECOMMENDED", DEFAULT_SUMMARY_LENGTH_RECOMMENDED)
         )
     )
-    """Recommended length of LLM summary output."""
+    """LLM 摘要输出的推荐长度。"""
 
     llm_model_max_async: int = field(
         default=int(os.getenv("MAX_ASYNC", DEFAULT_MAX_ASYNC))
     )
-    """Maximum number of concurrent LLM calls."""
+    """LLM 并发调用的最大数量。"""
 
     llm_model_kwargs: dict[str, Any] = field(default_factory=dict)
-    """Additional keyword arguments passed to the LLM model function."""
+    """传递给 LLM 模型函数的额外关键字参数。"""
 
     default_llm_timeout: int = field(
         default=int(os.getenv("LLM_TIMEOUT", DEFAULT_LLM_TIMEOUT))
     )
 
-    # Rerank Configuration
+    # 重排序配置
     # ---
 
     rerank_model_func: Callable[..., object] | None = field(default=None)
-    """Function for reranking retrieved documents. All rerank configurations (model name, API keys, top_k, etc.) should be included in this function. Optional."""
+    """用于对检索结果进行重排序的函数。所有重排配置（模型名、API key、top_k 等）应包含在该函数中。可选。"""
 
     min_rerank_score: float = field(
         default=get_env_value("MIN_RERANK_SCORE", DEFAULT_MIN_RERANK_SCORE, float)
     )
-    """Minimum rerank score threshold for filtering chunks after reranking."""
+    """重排后用于过滤分块的最小得分阈值。"""
 
-    # Storage
+    # 存储
     # ---
 
     vector_db_storage_cls_kwargs: dict[str, Any] = field(default_factory=dict)
-    """Additional parameters for vector database storage."""
+    """向量数据库存储的额外参数。"""
 
     enable_llm_cache: bool = field(default=True)
-    """Enables caching for LLM responses to avoid redundant computations."""
+    """启用 LLM 响应缓存以避免重复计算。"""
 
     enable_llm_cache_for_entity_extract: bool = field(default=True)
-    """If True, enables caching for entity extraction steps to reduce LLM costs."""
+    """若为 True，则为实体抽取步骤启用缓存以降低 LLM 成本。"""
 
-    # Extensions
+    # 扩展
     # ---
 
     max_parallel_insert: int = field(
         default=int(os.getenv("MAX_PARALLEL_INSERT", DEFAULT_MAX_PARALLEL_INSERT))
     )
-    """Maximum number of parallel insert operations."""
+    """并行插入操作的最大数量。"""
 
     max_graph_nodes: int = field(
         default=get_env_value("MAX_GRAPH_NODES", DEFAULT_MAX_GRAPH_NODES, int)
     )
-    """Maximum number of graph nodes to return in knowledge graph queries."""
+    """知识图谱查询返回的最大图节点数。"""
 
     max_source_ids_per_entity: int = field(
         default=get_env_value(
             "MAX_SOURCE_IDS_PER_ENTITY", DEFAULT_MAX_SOURCE_IDS_PER_ENTITY, int
         )
     )
-    """Maximum number of source (chunk) ids in entity Grpah + VDB."""
+    """实体在图谱 + 向量库中的来源（chunk）ID 最大数量。"""
 
     max_source_ids_per_relation: int = field(
         default=get_env_value(
@@ -395,7 +396,7 @@ class LightRAG:
             int,
         )
     )
-    """Maximum number of source (chunk) ids in relation Graph + VDB."""
+    """关系在图谱 + 向量库中的来源（chunk）ID 最大数量。"""
 
     source_ids_limit_method: str = field(
         default_factory=lambda: normalize_source_ids_limit_method(
@@ -406,15 +407,15 @@ class LightRAG:
             )
         )
     )
-    """Strategy for enforcing source_id limits: IGNORE_NEW or FIFO."""
+    """source_id 限制的策略：IGNORE_NEW 或 FIFO。"""
 
     max_file_paths: int = field(
         default=get_env_value("MAX_FILE_PATHS", DEFAULT_MAX_FILE_PATHS, int)
     )
-    """Maximum number of file paths to store in entity/relation file_path field."""
+    """实体/关系的 file_path 字段中可存储的最大文件路径数量。"""
 
     file_path_more_placeholder: str = field(default=DEFAULT_FILE_PATH_MORE_PLACEHOLDER)
-    """Placeholder text when file paths exceed max_file_paths limit."""
+    """当文件路径超过 max_file_paths 限制时的占位文本。"""
 
     addon_params: dict[str, Any] = field(
         default_factory=lambda: {
@@ -425,19 +426,19 @@ class LightRAG:
         }
     )
 
-    # Storages Management
+    # 存储管理
     # ---
 
-    # TODO: Deprecated (LightRAG will never initialize storage automatically on creation，and finalize should be call before destroying)
+    # TODO: 已弃用（LightRAG 不会在创建时自动初始化存储，销毁前应调用 finalize）
     auto_manage_storages_states: bool = field(default=False)
-    """If True, lightrag will automatically calls initialize_storages and finalize_storages at the appropriate times."""
+    """若为 True，lightrag 会在合适的时机自动调用 initialize_storages 和 finalize_storages。"""
 
     cosine_better_than_threshold: float = field(
         default=float(os.getenv("COSINE_THRESHOLD", 0.2))
     )
 
     ollama_server_infos: Optional[OllamaServerInfos] = field(default=None)
-    """Configuration for Ollama server information."""
+    """Ollama 服务器信息配置。"""
 
     _storages_status: StoragesStatus = field(default=StoragesStatus.NOT_CREATED)
 
@@ -446,7 +447,7 @@ class LightRAG:
             initialize_share_data,
         )
 
-        # Handle deprecated parameters
+        # 处理已弃用的参数
         if self.log_level is not None:
             warnings.warn(
                 "WARNING: log_level parameter is deprecated, use setup_logger in utils.py instead",
@@ -460,7 +461,7 @@ class LightRAG:
                 stacklevel=2,
             )
 
-        # Remove these attributes to prevent their use
+        # 移除这些属性以防止继续使用
         if hasattr(self, "log_level"):
             delattr(self, "log_level")
         if hasattr(self, "log_file_path"):
@@ -472,7 +473,7 @@ class LightRAG:
             logger.info(f"Creating working directory {self.working_dir}")
             os.makedirs(self.working_dir)
 
-        # Verify storage implementation compatibility and environment variables
+        # 验证存储实现兼容性与环境变量
         storage_configs = [
             ("KV_STORAGE", self.kv_storage),
             ("VECTOR_STORAGE", self.vector_storage),
@@ -481,30 +482,30 @@ class LightRAG:
         ]
 
         for storage_type, storage_name in storage_configs:
-            # Verify storage implementation compatibility
+            # 验证存储实现兼容性
             verify_storage_implementation(storage_type, storage_name)
-            # Check environment variables
+            # 检查环境变量
             check_storage_env_vars(storage_name)
 
-        # Ensure vector_db_storage_cls_kwargs has required fields
+        # 确保 vector_db_storage_cls_kwargs 包含必要字段
         self.vector_db_storage_cls_kwargs = {
             "cosine_better_than_threshold": self.cosine_better_than_threshold,
             **self.vector_db_storage_cls_kwargs,
         }
 
-        # Init Tokenizer
-        # Post-initialization hook to handle backward compatabile tokenizer initialization based on provided parameters
+        # 初始化 Tokenizer
+        # 根据提供的参数进行后置初始化，以兼容旧的 tokenizer 初始化方式
         if self.tokenizer is None:
             if self.tiktoken_model_name:
                 self.tokenizer = TiktokenTokenizer(self.tiktoken_model_name)
             else:
                 self.tokenizer = TiktokenTokenizer()
 
-        # Initialize ollama_server_infos if not provided
+        # 如果未提供，则初始化 ollama_server_infos
         if self.ollama_server_infos is None:
             self.ollama_server_infos = OllamaServerInfos()
 
-        # Validate config
+        # 校验配置
         if self.force_llm_summary_on_merge < 3:
             logger.warning(
                 f"force_llm_summary_on_merge should be at least 3, got {self.force_llm_summary_on_merge}"
@@ -518,8 +519,8 @@ class LightRAG:
                 f"max_total_tokens({self.summary_max_tokens}) should greater than summary_length_recommended({self.summary_length_recommended})"
             )
 
-        # Init Embedding
-        # Step 1: Capture embedding_func and max_token_size before applying rate_limit decorator
+        # 初始化 Embedding
+        # 步骤 1：在应用 rate_limit 装饰器前捕获 embedding_func 与 max_token_size
         original_embedding_func = self.embedding_func
         embedding_max_token_size = None
         if self.embedding_func and hasattr(self.embedding_func, "max_token_size"):
@@ -529,28 +530,28 @@ class LightRAG:
             )
         self.embedding_token_limit = embedding_max_token_size
 
-        # Fix global_config now
+        # 现在固定 global_config
         global_config = asdict(self)
-        # Restore original EmbeddingFunc object (asdict converts it to dict)
+        # 恢复原始 EmbeddingFunc 对象（asdict 会将其转为 dict）
         global_config["embedding_func"] = original_embedding_func
 
         _print_config = ",\n  ".join([f"{k} = {v}" for k, v in global_config.items()])
         logger.debug(f"LightRAG init with param:\n  {_print_config}\n")
 
-        # Step 2: Apply priority wrapper decorator to EmbeddingFunc's inner func
-        # Create a NEW EmbeddingFunc instance with the wrapped func to avoid mutating the caller's object
-        # This ensures _generate_collection_suffix can still access attributes (model_name, embedding_dim)
-        # while preventing side effects when the same EmbeddingFunc is reused across multiple LightRAG instances
+        # 步骤 2：为 EmbeddingFunc 的内部函数应用优先级包装装饰器
+        # 用包装后的函数创建一个新的 EmbeddingFunc 实例，避免修改调用方对象
+        # 这确保 _generate_collection_suffix 仍可访问属性（model_name、embedding_dim）
+        # 同时避免同一个 EmbeddingFunc 被多个 LightRAG 实例复用时产生副作用
         if self.embedding_func is not None:
             wrapped_func = priority_limit_async_func_call(
                 self.embedding_func_max_async,
                 llm_timeout=self.default_embedding_timeout,
                 queue_name="Embedding func",
             )(self.embedding_func.func)
-            # Use dataclasses.replace() to create a new instance, leaving the original unchanged
+            # 使用 dataclasses.replace() 创建新实例，保持原对象不变
             self.embedding_func = replace(self.embedding_func, func=wrapped_func)
 
-        # Initialize all storages
+        # 初始化所有存储
         self.key_string_value_json_storage_cls: type[BaseKVStorage] = (
             self._get_storage_class(self.kv_storage)
         )  # type: ignore
@@ -570,7 +571,7 @@ class LightRAG:
             self.graph_storage_cls, global_config=global_config
         )
 
-        # Initialize document status storage
+        # 初始化文档状态存储
         self.doc_status_storage_cls = self._get_storage_class(self.doc_status_storage)
 
         self.llm_response_cache: BaseKVStorage = self.key_string_value_json_storage_cls(  # type: ignore
@@ -641,7 +642,7 @@ class LightRAG:
             meta_fields={"full_doc_id", "content", "file_path"},
         )
 
-        # Initialize document status storage
+        # 初始化文档状态存储
         self.doc_status: DocStatusStorage = self.doc_status_storage_cls(
             namespace=NameSpace.DOC_STATUS,
             workspace=self.workspace,
@@ -649,10 +650,10 @@ class LightRAG:
             embedding_func=None,
         )
 
-        # Directly use llm_response_cache, don't create a new object
+        # 直接使用 llm_response_cache，不创建新对象
         hashing_kv = self.llm_response_cache
 
-        # Get timeout from LLM model kwargs for dynamic timeout calculation
+        # 从 LLM 模型参数中获取超时设置，用于动态超时计算
         self.llm_model_func = priority_limit_async_func_call(
             self.llm_model_max_async,
             llm_timeout=self.default_llm_timeout,
@@ -668,10 +669,10 @@ class LightRAG:
         self._storages_status = StoragesStatus.CREATED
 
     async def initialize_storages(self):
-        """Storage initialization must be called one by one to prevent deadlock"""
+        """存储初始化必须逐个调用以防止死锁"""
         if self._storages_status == StoragesStatus.CREATED:
-            # Set the first initialized workspace will set the default workspace
-            # Allows namespace operation without specifying workspace for backward compatibility
+            # 第一个初始化的 workspace 会被设置为默认 workspace
+            # 为了向后兼容，允许在不指定 workspace 的情况下进行命名空间操作
             default_workspace = get_default_workspace()
             if default_workspace is None:
                 set_default_workspace(self.workspace)
@@ -681,7 +682,7 @@ class LightRAG:
                     f"while default workspace is set to '{default_workspace}'"
                 )
 
-            # Auto-initialize pipeline_status for this workspace
+            # 为该 workspace 自动初始化 pipeline_status
             from lightrag.kg.shared_storage import initialize_pipeline_status
 
             await initialize_pipeline_status(workspace=self.workspace)
@@ -708,7 +709,7 @@ class LightRAG:
             logger.debug("All storage types initialized")
 
     async def finalize_storages(self):
-        """Asynchronously finalize the storages with improved error handling"""
+        """异步完成各存储的 finalize，并增强错误处理"""
         if self._storages_status == StoragesStatus.INITIALIZED:
             storages = [
                 ("full_docs", self.full_docs),
@@ -725,7 +726,7 @@ class LightRAG:
                 ("doc_status", self.doc_status),
             ]
 
-            # Finalize each storage individually to ensure one failure doesn't prevent others from closing
+            # 逐个 finalize 每个存储，确保单个失败不影响其他存储关闭
             successful_finalizations = []
             failed_finalizations = []
 
@@ -740,7 +741,7 @@ class LightRAG:
                         logger.error(error_msg)
                         failed_finalizations.append(storage_name)
 
-            # Log summary of finalization results
+            # 记录 finalize 结果汇总
             if successful_finalizations:
                 logger.info(
                     f"Successfully finalized {len(successful_finalizations)} storages"
@@ -756,14 +757,14 @@ class LightRAG:
             self._storages_status = StoragesStatus.FINALIZED
 
     async def check_and_migrate_data(self):
-        """Check if data migration is needed and perform migration if necessary"""
+        """检查是否需要数据迁移，并在必要时执行迁移"""
         async with get_data_init_lock():
             try:
-                # Check if migration is needed:
-                # 1. chunk_entity_relation_graph has entities and relations (count > 0)
-                # 2. full_entities and full_relations are empty
+                # 判断是否需要迁移：
+                # 1. chunk_entity_relation_graph 中存在实体与关系（数量 > 0）
+                # 2. full_entities 与 full_relations 为空
 
-                # Get all entity labels from graph
+                # 从图中获取所有实体标签
                 all_entity_labels = (
                     await self.chunk_entity_relation_graph.get_all_labels()
                 )
@@ -773,14 +774,14 @@ class LightRAG:
                     return
 
                 try:
-                    # Initialize chunk tracking storage after migration
+                    # 迁移后初始化分块追踪存储
                     await self._migrate_chunk_tracking_storage()
                 except Exception as e:
                     logger.error(f"Error during chunk_tracking migration: {e}")
                     raise e
 
-                # Check if full_entities and full_relations are empty
-                # Get all processed documents to check their entity/relation data
+                # 检查 full_entities 与 full_relations 是否为空
+                # 获取所有已处理文档以检查其实体/关系数据
                 try:
                     processed_docs = await self.doc_status.get_docs_by_status(
                         DocStatus.PROCESSED
@@ -790,10 +791,10 @@ class LightRAG:
                         logger.debug("No processed documents found, skipping migration")
                         return
 
-                    # Check first few documents to see if they have full_entities/full_relations data
+                    # 检查前几个文档是否已有 full_entities/full_relations 数据
                     migration_needed = True
                     checked_count = 0
-                    max_check = min(5, len(processed_docs))  # Check up to 5 documents
+                    max_check = min(5, len(processed_docs))  # 最多检查 5 个文档
 
                     for doc_id in list(processed_docs.keys())[:max_check]:
                         checked_count += 1
@@ -814,7 +815,7 @@ class LightRAG:
                         f"Data migration needed: found {len(all_entity_labels)} entities in graph but no full_entities/full_relations data"
                     )
 
-                    # Perform migration
+                    # 执行迁移
                     await self._migrate_entity_relation_data(processed_docs)
 
                 except Exception as e:
@@ -826,10 +827,10 @@ class LightRAG:
                 raise e
 
     async def _migrate_entity_relation_data(self, processed_docs: dict):
-        """Migrate existing entity and relation data to full_entities and full_relations storage"""
+        """将已有实体与关系数据迁移到 full_entities 与 full_relations 存储"""
         logger.info(f"Starting data migration for {len(processed_docs)} documents")
 
-        # Create mapping from chunk_id to doc_id
+        # 建立 chunk_id 到 doc_id 的映射
         chunk_to_doc = {}
         for doc_id, doc_status in processed_docs.items():
             chunk_ids = (
@@ -840,25 +841,25 @@ class LightRAG:
             for chunk_id in chunk_ids:
                 chunk_to_doc[chunk_id] = doc_id
 
-        # Initialize document entity and relation mappings
+        # 初始化文档实体与关系映射
         doc_entities = {}  # doc_id -> set of entity_names
         doc_relations = {}  # doc_id -> set of relation_pairs (as tuples)
 
-        # Get all nodes and edges from graph
+        # 从图中获取所有节点与边
         all_nodes = await self.chunk_entity_relation_graph.get_all_nodes()
         all_edges = await self.chunk_entity_relation_graph.get_all_edges()
 
-        # Process all nodes once
+        # 处理所有节点
         for node in all_nodes:
             if "source_id" in node:
                 entity_id = node.get("entity_id") or node.get("id")
                 if not entity_id:
                     continue
 
-                # Get chunk IDs from source_id
+                # 从 source_id 中获取 chunk IDs
                 source_ids = node["source_id"].split(GRAPH_FIELD_SEP)
 
-                # Find which documents this entity belongs to
+                # 找出该实体属于哪些文档
                 for chunk_id in source_ids:
                     doc_id = chunk_to_doc.get(chunk_id)
                     if doc_id:
@@ -866,7 +867,7 @@ class LightRAG:
                             doc_entities[doc_id] = set()
                         doc_entities[doc_id].add(entity_id)
 
-        # Process all edges once
+        # 处理所有边
         for edge in all_edges:
             if "source_id" in edge:
                 src = edge.get("source")
@@ -874,22 +875,22 @@ class LightRAG:
                 if not src or not tgt:
                     continue
 
-                # Get chunk IDs from source_id
+                # 从 source_id 中获取 chunk IDs
                 source_ids = edge["source_id"].split(GRAPH_FIELD_SEP)
 
-                # Find which documents this relation belongs to
+                # 找出该关系属于哪些文档
                 for chunk_id in source_ids:
                     doc_id = chunk_to_doc.get(chunk_id)
                     if doc_id:
                         if doc_id not in doc_relations:
                             doc_relations[doc_id] = set()
-                        # Use tuple for set operations, convert to list later
+                        # 使用 tuple 以便集合操作，后续再转回 list
                         doc_relations[doc_id].add(tuple(sorted((src, tgt))))
 
-        # Store the results in full_entities and full_relations
+        # 将结果写入 full_entities 与 full_relations
         migration_count = 0
 
-        # Store entities
+        # 写入实体
         if doc_entities:
             entities_data = {}
             for doc_id, entity_set in doc_entities.items():
@@ -899,11 +900,11 @@ class LightRAG:
                 }
             await self.full_entities.upsert(entities_data)
 
-        # Store relations
+        # 写入关系
         if doc_relations:
             relations_data = {}
             for doc_id, relation_set in doc_relations.items():
-                # Convert tuples back to lists
+                # 将 tuple 转回 list
                 relations_data[doc_id] = {
                     "relation_pairs": [list(pair) for pair in relation_set],
                     "count": len(relation_set),
@@ -914,7 +915,7 @@ class LightRAG:
             set(list(doc_entities.keys()) + list(doc_relations.keys()))
         )
 
-        # Persist the migrated data
+        # 持久化迁移后的数据
         await self.full_entities.index_done_callback()
         await self.full_relations.index_done_callback()
 
@@ -923,7 +924,7 @@ class LightRAG:
         )
 
     async def _migrate_chunk_tracking_storage(self) -> None:
-        """Ensure entity/relation chunk tracking KV stores exist and are seeded."""
+        """确保实体/关系分块追踪 KV 存储存在并完成初始化。"""
 
         if not self.entity_chunks or not self.relation_chunks:
             return
@@ -946,7 +947,7 @@ class LightRAG:
         if not need_entity_migration and not need_relation_migration:
             return
 
-        BATCH_SIZE = 500  # Process 500 records per batch
+        BATCH_SIZE = 500  # 每批处理 500 条记录
 
         if need_entity_migration:
             try:
@@ -957,7 +958,7 @@ class LightRAG:
 
             logger.info(f"Starting chunk_tracking data migration: {len(nodes)} nodes")
 
-            # Process nodes in batches
+            # 分批处理节点
             total_nodes = len(nodes)
             total_batches = (total_nodes + BATCH_SIZE - 1) // BATCH_SIZE
             total_migrated = 0
@@ -995,7 +996,7 @@ class LightRAG:
                     )
 
             if total_migrated > 0:
-                # Persist entity_chunks data to disk
+                # 将 entity_chunks 数据持久化到磁盘
                 await self.entity_chunks.index_done_callback()
                 logger.info(
                     f"Entity chunk_tracking migration completed: {total_migrated} records persisted"
@@ -1010,7 +1011,7 @@ class LightRAG:
 
             logger.info(f"Starting chunk_tracking data migration: {len(edges)} edges")
 
-            # Process edges in batches
+            # 分批处理边
             total_edges = len(edges)
             total_batches = (total_edges + BATCH_SIZE - 1) // BATCH_SIZE
             total_migrated = 0
@@ -1050,7 +1051,7 @@ class LightRAG:
                     )
 
             if total_migrated > 0:
-                # Persist relation_chunks data to disk
+                # 将 relation_chunks 数据持久化到磁盘
                 await self.relation_chunks.index_done_callback()
                 logger.info(
                     f"Relation chunk_tracking migration completed: {total_migrated} records persisted"
@@ -1066,21 +1067,21 @@ class LightRAG:
         max_depth: int = 3,
         max_nodes: int = None,
     ) -> KnowledgeGraph:
-        """Get knowledge graph for a given label
+        """获取指定标签的知识图谱
 
-        Args:
-            node_label (str): Label to get knowledge graph for
-            max_depth (int): Maximum depth of graph
-            max_nodes (int, optional): Maximum number of nodes to return. Defaults to self.max_graph_nodes.
+        参数：
+            node_label (str): 要获取知识图谱的标签
+            max_depth (int): 图的最大深度
+            max_nodes (int, optional): 返回的最大节点数，默认使用 self.max_graph_nodes
 
-        Returns:
-            KnowledgeGraph: Knowledge graph containing nodes and edges
+        返回值：
+            KnowledgeGraph: 包含节点与边的知识图谱
         """
-        # Use self.max_graph_nodes as default if max_nodes is None
+        # 若 max_nodes 为空，默认使用 self.max_graph_nodes
         if max_nodes is None:
             max_nodes = self.max_graph_nodes
         else:
-            # Limit max_nodes to not exceed self.max_graph_nodes
+            # 限制 max_nodes 不超过 self.max_graph_nodes
             max_nodes = min(max_nodes, self.max_graph_nodes)
 
         return await self.chunk_entity_relation_graph.get_knowledge_graph(
@@ -1088,7 +1089,7 @@ class LightRAG:
         )
 
     def _get_storage_class(self, storage_name: str) -> Callable[..., Any]:
-        # Direct imports for default storage implementations
+        # 对默认存储实现进行直接导入
         if storage_name == "JsonKVStorage":
             from lightrag.kg.json_kv_impl import JsonKVStorage
 
@@ -1106,7 +1107,7 @@ class LightRAG:
 
             return JsonDocStatusStorage
         else:
-            # Fallback to dynamic import for other storage implementations
+            # 其他存储实现回退为动态导入
             import_path = STORAGES[storage_name]
             storage_class = lazy_external_import(import_path, storage_name)
             return storage_class
@@ -1120,20 +1121,18 @@ class LightRAG:
         file_paths: str | list[str] | None = None,
         track_id: str | None = None,
     ) -> str:
-        """Sync Insert documents with checkpoint support
+        """同步插入文档（支持断点/检查点）
 
-        Args:
-            input: Single document string or list of document strings
-            split_by_character: if split_by_character is not None, split the string by character, if chunk longer than
-            chunk_token_size, it will be split again by token size.
-            split_by_character_only: if split_by_character_only is True, split the string by character only, when
-            split_by_character is None, this parameter is ignored.
-            ids: single string of the document ID or list of unique document IDs, if not provided, MD5 hash IDs will be generated
-            file_paths: single string of the file path or list of file paths, used for citation
-            track_id: tracking ID for monitoring processing status, if not provided, will be generated
+        参数：
+            input: 单个文档字符串或文档字符串列表
+            split_by_character: 若不为 None，则按字符拆分；若块长度超过 chunk_token_size，会再按 token 数拆分
+            split_by_character_only: 若为 True，则仅按指定字符拆分；当 split_by_character 为 None 时该参数无效
+            ids: 单个文档 ID 或唯一文档 ID 列表；未提供则生成 MD5 哈希 ID
+            file_paths: 单个文件路径或文件路径列表，用于引用
+            track_id: 用于监控处理状态的追踪 ID，未提供将自动生成
 
-        Returns:
-            str: tracking ID for monitoring processing status
+        返回值：
+            str: 用于监控处理状态的追踪 ID
         """
         loop = always_get_an_event_loop()
         return loop.run_until_complete(
@@ -1156,22 +1155,20 @@ class LightRAG:
         file_paths: str | list[str] | None = None,
         track_id: str | None = None,
     ) -> str:
-        """Async Insert documents with checkpoint support
+        """异步插入文档（支持断点/检查点）
 
-        Args:
-            input: Single document string or list of document strings
-            split_by_character: if split_by_character is not None, split the string by character, if chunk longer than
-            chunk_token_size, it will be split again by token size.
-            split_by_character_only: if split_by_character_only is True, split the string by character only, when
-            split_by_character is None, this parameter is ignored.
-            ids: list of unique document IDs, if not provided, MD5 hash IDs will be generated
-            file_paths: list of file paths corresponding to each document, used for citation
-            track_id: tracking ID for monitoring processing status, if not provided, will be generated
+        参数：
+            input: 单个文档字符串或文档字符串列表
+            split_by_character: 若不为 None，则按字符拆分；若块长度超过 chunk_token_size，会再按 token 数拆分
+            split_by_character_only: 若为 True，则仅按指定字符拆分；当 split_by_character 为 None 时该参数无效
+            ids: 唯一文档 ID 列表；未提供则生成 MD5 哈希 ID
+            file_paths: 每个文档对应的文件路径列表，用于引用
+            track_id: 用于监控处理状态的追踪 ID，未提供将自动生成
 
-        Returns:
-            str: tracking ID for monitoring processing status
+        返回值：
+            str: 用于监控处理状态的追踪 ID
         """
-        # Generate track_id if not provided
+        # 若未提供则生成 track_id
         if track_id is None:
             track_id = generate_track_id("insert")
 
@@ -1182,7 +1179,7 @@ class LightRAG:
 
         return track_id
 
-    # TODO: deprecated, use insert instead
+    # TODO: 已弃用，请改用 insert
     def insert_custom_chunks(
         self,
         full_text: str,
@@ -1194,18 +1191,18 @@ class LightRAG:
             self.ainsert_custom_chunks(full_text, text_chunks, doc_id)
         )
 
-    # TODO: deprecated, use ainsert instead
+    # TODO: 已弃用，请改用 ainsert
     async def ainsert_custom_chunks(
         self, full_text: str, text_chunks: list[str], doc_id: str | None = None
     ) -> None:
         update_storage = False
         try:
-            # Clean input texts
+            # 清理输入文本
             full_text = sanitize_text_for_encoding(full_text)
             text_chunks = [sanitize_text_for_encoding(chunk) for chunk in text_chunks]
             file_path = ""
 
-            # Process cleaned texts
+            # 处理清理后的文本
             if doc_id is None:
                 doc_key = compute_mdhash_id(full_text, prefix="doc-")
             else:
@@ -1262,23 +1259,23 @@ class LightRAG:
         track_id: str | None = None,
     ) -> str:
         """
-        Pipeline for Processing Documents
+        文档处理管线
 
-        1. Validate ids if provided or generate MD5 hash IDs and remove duplicate contents
-        2. Generate document initial status
-        3. Filter out already processed documents
-        4. Enqueue document in status
+        1. 若提供 ids 则校验，否则生成 MD5 哈希 ID，并移除重复内容
+        2. 生成文档初始状态
+        3. 过滤已处理的文档
+        4. 将文档加入状态队列
 
-        Args:
-            input: Single document string or list of document strings
-            ids: list of unique document IDs, if not provided, MD5 hash IDs will be generated
-            file_paths: list of file paths corresponding to each document, used for citation
-            track_id: tracking ID for monitoring processing status, if not provided, will be generated with "enqueue" prefix
+        参数：
+            input: 单个文档字符串或文档字符串列表
+            ids: 唯一文档 ID 列表；未提供则生成 MD5 哈希 ID
+            file_paths: 每个文档对应的文件路径列表，用于引用
+            track_id: 用于监控处理状态的追踪 ID，未提供将以 "enqueue" 前缀生成
 
-        Returns:
-            str: tracking ID for monitoring processing status
+        返回值：
+            str: 用于监控处理状态的追踪 ID
         """
-        # Generate track_id if not provided
+        # 若未提供则生成 track_id
         if track_id is None or track_id.strip() == "":
             track_id = generate_track_id("enqueue")
         if isinstance(input, str):
@@ -1288,7 +1285,7 @@ class LightRAG:
         if isinstance(file_paths, str):
             file_paths = [file_paths]
 
-        # If file_paths is provided, ensure it matches the number of documents
+        # 若提供了 file_paths，确保数量与文档数一致
         if file_paths is not None:
             if isinstance(file_paths, str):
                 file_paths = [file_paths]
@@ -1297,40 +1294,40 @@ class LightRAG:
                     "Number of file paths must match the number of documents"
                 )
         else:
-            # If no file paths provided, use placeholder
+            # 若未提供 file_paths，使用占位符
             file_paths = ["unknown_source"] * len(input)
 
-        # 1. Validate ids if provided or generate MD5 hash IDs and remove duplicate contents
+        # 1. 若提供 ids 则校验，否则生成 MD5 哈希 ID，并移除重复内容
         if ids is not None:
-            # Check if the number of IDs matches the number of documents
+            # 检查 ID 数量是否与文档数量一致
             if len(ids) != len(input):
                 raise ValueError("Number of IDs must match the number of documents")
 
-            # Check if IDs are unique
+            # 检查 ID 是否唯一
             if len(ids) != len(set(ids)):
                 raise ValueError("IDs must be unique")
 
-            # Generate contents dict and remove duplicates in one pass
+            # 一次性生成内容字典并去重
             unique_contents = {}
             for id_, doc, path in zip(ids, input, file_paths):
                 cleaned_content = sanitize_text_for_encoding(doc)
                 if cleaned_content not in unique_contents:
                     unique_contents[cleaned_content] = (id_, path)
 
-            # Reconstruct contents with unique content
+            # 仅保留唯一内容并重建 contents
             contents = {
                 id_: {"content": content, "file_path": file_path}
                 for content, (id_, file_path) in unique_contents.items()
             }
         else:
-            # Clean input text and remove duplicates in one pass
+            # 一次性清理输入文本并去重
             unique_content_with_paths = {}
             for doc, path in zip(input, file_paths):
                 cleaned_content = sanitize_text_for_encoding(doc)
                 if cleaned_content not in unique_content_with_paths:
                     unique_content_with_paths[cleaned_content] = path
 
-            # Generate contents dict of MD5 hash IDs and documents with paths
+            # 生成包含 MD5 哈希 ID 与路径的内容字典
             contents = {
                 compute_mdhash_id(content, prefix="doc-"): {
                     "content": content,
@@ -1339,7 +1336,7 @@ class LightRAG:
                 for content, path in unique_content_with_paths.items()
             }
 
-        # 2. Generate document initial status (without content)
+        # 2. 生成文档初始状态（不包含正文）
         new_docs: dict[str, Any] = {
             id_: {
                 "status": DocStatus.PENDING,
@@ -1347,21 +1344,21 @@ class LightRAG:
                 "content_length": len(content_data["content"]),
                 "created_at": datetime.now(timezone.utc).isoformat(),
                 "updated_at": datetime.now(timezone.utc).isoformat(),
-                "file_path": content_data[
-                    "file_path"
-                ],  # Store file path in document status
-                "track_id": track_id,  # Store track_id in document status
+                    "file_path": content_data[
+                        "file_path"
+                    ],  # 在文档状态中记录文件路径
+                "track_id": track_id,  # 在文档状态中记录 track_id
             }
             for id_, content_data in contents.items()
         }
 
-        # 3. Filter out already processed documents
-        # Get docs ids
+        # 3. 过滤已处理的文档
+        # 获取文档 ID 集合
         all_new_doc_ids = set(new_docs.keys())
-        # Exclude IDs of documents that are already enqueued
+        # 排除已入队文档的 ID
         unique_new_doc_ids = await self.doc_status.filter_keys(all_new_doc_ids)
 
-        # Handle duplicate documents - create trackable records with current track_id
+        # 处理重复文档：为当前 track_id 创建可追踪记录
         ignored_ids = list(all_new_doc_ids - unique_new_doc_ids)
         if ignored_ids:
             duplicate_docs: dict[str, Any] = {}
@@ -1369,7 +1366,7 @@ class LightRAG:
                 file_path = new_docs.get(doc_id, {}).get("file_path", "unknown_source")
                 logger.warning(f"Duplicate document detected: {doc_id} ({file_path})")
 
-                # Get existing document info for reference
+                # 获取已有文档信息用于参考
                 existing_doc = await self.doc_status.get_by_id(doc_id)
                 existing_status = (
                     existing_doc.get("status", "unknown") if existing_doc else "unknown"
@@ -1378,7 +1375,7 @@ class LightRAG:
                     existing_doc.get("track_id", "") if existing_doc else ""
                 )
 
-                # Create a new record with unique ID for this duplicate attempt
+                # 为本次重复尝试创建唯一记录 ID
                 dup_record_id = compute_mdhash_id(f"{doc_id}-{track_id}", prefix="dup-")
                 duplicate_docs[dup_record_id] = {
                     "status": DocStatus.FAILED,
@@ -1396,14 +1393,14 @@ class LightRAG:
                     },
                 }
 
-            # Store duplicate records in doc_status
+            # 将重复记录写入 doc_status
             if duplicate_docs:
                 await self.doc_status.upsert(duplicate_docs)
                 logger.info(
                     f"Created {len(duplicate_docs)} duplicate document records with track_id: {track_id}"
                 )
 
-        # Filter new_docs to only include documents with unique IDs
+        # 仅保留唯一 ID 的新文档
         new_docs = {
             doc_id: new_docs[doc_id]
             for doc_id in unique_new_doc_ids
@@ -1414,8 +1411,8 @@ class LightRAG:
             logger.warning("No new unique documents were found.")
             return
 
-        # 4. Store document content in full_docs and status in doc_status
-        #    Store full document content separately
+        # 4. 将文档内容写入 full_docs，状态写入 doc_status
+        #    完整文档内容单独存储
         full_docs_data = {
             doc_id: {
                 "content": contents[doc_id]["content"],
@@ -1424,10 +1421,10 @@ class LightRAG:
             for doc_id in new_docs.keys()
         }
         await self.full_docs.upsert(full_docs_data)
-        # Persist data to disk immediately
+        # 立即持久化数据到磁盘
         await self.full_docs.index_done_callback()
 
-        # Store document status (without content)
+        # 存储文档状态（不包含正文）
         await self.doc_status.upsert(new_docs)
         logger.debug(f"Stored {len(new_docs)} new unique documents")
 
@@ -1439,29 +1436,28 @@ class LightRAG:
         track_id: str | None = None,
     ) -> None:
         """
-        Record file extraction errors in doc_status storage.
+        在 doc_status 存储中记录文件抽取错误。
 
-        This function creates error document entries in the doc_status storage for files
-        that failed during the extraction process. Each error entry contains information
-        about the failure to help with debugging and monitoring.
+        该函数会为抽取过程中失败的文件在 doc_status 中创建错误文档条目，
+        每条错误记录包含失败信息，便于调试与监控。
 
-        Args:
-            error_files: List of dictionaries containing error information for each failed file.
-                Each dictionary should contain:
-                - file_path: Original file name/path
-                - error_description: Brief error description (for content_summary)
-                - original_error: Full error message (for error_msg)
-                - file_size: File size in bytes (for content_length, 0 if unknown)
-            track_id: Optional tracking ID for grouping related operations
+        参数：
+            error_files: 包含每个失败文件错误信息的字典列表。
+                每个字典应包含：
+                - file_path: 原始文件名/路径
+                - error_description: 简要错误描述（用于 content_summary）
+                - original_error: 完整错误信息（用于 error_msg）
+                - file_size: 文件大小（字节），未知时为 0
+            track_id: 可选的追踪 ID，用于关联相关操作
 
-        Returns:
+        返回值：
             None
         """
         if not error_files:
             logger.debug("No error files to record")
             return
 
-        # Generate track_id if not provided
+        # 若未提供则生成 track_id
         if track_id is None or track_id.strip() == "":
             track_id = generate_track_id("error")
 
@@ -1476,7 +1472,7 @@ class LightRAG:
             original_error = error_file.get("original_error", "Unknown error")
             file_size = error_file.get("file_size", 0)
 
-            # Generate unique doc_id with "error-" prefix
+            # 使用 "error-" 前缀生成唯一 doc_id
             doc_id_content = f"{file_path}-{error_description}"
             doc_id = compute_mdhash_id(doc_id_content, prefix="error-")
 
@@ -1485,7 +1481,7 @@ class LightRAG:
                 "content_summary": error_description,
                 "content_length": file_size,
                 "error_msg": original_error,
-                "chunks_count": 0,  # No chunks for failed files
+                "chunks_count": 0,  # 失败文件不产生分块
                 "created_at": current_time,
                 "updated_at": current_time,
                 "file_path": file_path,
@@ -1495,10 +1491,10 @@ class LightRAG:
                 },
             }
 
-        # Store error documents in doc_status
+        # 将错误文档写入 doc_status
         if error_docs:
             await self.doc_status.upsert(error_docs)
-            # Log each error for debugging
+            # 逐条记录错误日志以便调试
             for doc_id, error_doc in error_docs.items():
                 logger.error(
                     f"File processing error: - ID: {doc_id} {error_doc['file_path']}"
@@ -1510,17 +1506,17 @@ class LightRAG:
         pipeline_status: dict,
         pipeline_status_lock: asyncio.Lock,
     ) -> dict[str, DocProcessingStatus]:
-        """Validate and fix document data consistency by deleting inconsistent entries, but preserve failed documents"""
+        """通过删除不一致条目来校验并修复文档一致性，但保留失败文档"""
         inconsistent_docs = []
         failed_docs_to_preserve = []
         successful_deletions = 0
 
-        # Check each document's data consistency
+        # 检查每个文档的数据一致性
         for doc_id, status_doc in to_process_docs.items():
-            # Check if corresponding content exists in full_docs
+            # 检查 full_docs 中是否存在对应内容
             content_data = await self.full_docs.get_by_id(doc_id)
             if not content_data:
-                # Check if this is a failed document that should be preserved
+                # 判断是否为应保留的失败文档
                 if (
                     hasattr(status_doc, "status")
                     and status_doc.status == DocStatus.FAILED
@@ -1529,7 +1525,7 @@ class LightRAG:
                 else:
                     inconsistent_docs.append(doc_id)
 
-        # Log information about failed documents that will be preserved
+        # 记录将被保留的失败文档信息
         if failed_docs_to_preserve:
             async with pipeline_status_lock:
                 preserve_message = f"Preserving {len(failed_docs_to_preserve)} failed document entries for manual review"
@@ -1537,11 +1533,11 @@ class LightRAG:
                 pipeline_status["latest_message"] = preserve_message
                 pipeline_status["history_messages"].append(preserve_message)
 
-            # Remove failed documents from processing list but keep them in doc_status
+            # 从处理列表移除失败文档，但在 doc_status 中保留
             for doc_id in failed_docs_to_preserve:
                 to_process_docs.pop(doc_id, None)
 
-        # Delete inconsistent document entries(excluding failed documents)
+        # 删除不一致文档条目（不包含失败文档）
         if inconsistent_docs:
             async with pipeline_status_lock:
                 summary_message = (
@@ -1557,11 +1553,11 @@ class LightRAG:
                     status_doc = to_process_docs[doc_id]
                     file_path = getattr(status_doc, "file_path", "unknown_source")
 
-                    # Delete doc_status entry
+                    # 删除 doc_status 条目
                     await self.doc_status.delete([doc_id])
                     successful_deletions += 1
 
-                    # Log successful deletion
+                    # 记录成功删除日志
                     async with pipeline_status_lock:
                         log_message = (
                             f"Deleted inconsistent entry: {doc_id} ({file_path})"
@@ -1570,38 +1566,38 @@ class LightRAG:
                         pipeline_status["latest_message"] = log_message
                         pipeline_status["history_messages"].append(log_message)
 
-                    # Remove from processing list
+                    # 从处理列表移除
                     to_process_docs.pop(doc_id, None)
 
                 except Exception as e:
-                    # Log deletion failure
+                    # 记录删除失败日志
                     async with pipeline_status_lock:
                         error_message = f"Failed to delete entry: {doc_id} - {str(e)}"
                         logger.error(error_message)
                         pipeline_status["latest_message"] = error_message
                         pipeline_status["history_messages"].append(error_message)
 
-        # Final summary log
+        # 最终汇总日志
         # async with pipeline_status_lock:
         #     final_message = f"Successfully deleted {successful_deletions} inconsistent entries, preserved {len(failed_docs_to_preserve)} failed documents"
         #     logger.info(final_message)
         #     pipeline_status["latest_message"] = final_message
         #     pipeline_status["history_messages"].append(final_message)
 
-        # Reset PROCESSING and FAILED documents that pass consistency checks to PENDING status
+        # 将通过一致性检查的 PROCESSING/FAILED 文档重置为 PENDING
         docs_to_reset = {}
         reset_count = 0
 
         for doc_id, status_doc in to_process_docs.items():
-            # Check if document has corresponding content in full_docs (consistency check)
+            # 检查文档在 full_docs 中是否有对应内容（一致性检查）
             content_data = await self.full_docs.get_by_id(doc_id)
             if content_data:  # Document passes consistency check
-                # Check if document is in PROCESSING or FAILED status
+                # 检查文档是否处于 PROCESSING 或 FAILED 状态
                 if hasattr(status_doc, "status") and status_doc.status in [
                     DocStatus.PROCESSING,
                     DocStatus.FAILED,
                 ]:
-                    # Prepare document for status reset to PENDING
+                    # 准备将状态重置为 PENDING
                     docs_to_reset[doc_id] = {
                         "status": DocStatus.PENDING,
                         "content_summary": status_doc.content_summary,
@@ -1610,16 +1606,16 @@ class LightRAG:
                         "updated_at": datetime.now(timezone.utc).isoformat(),
                         "file_path": getattr(status_doc, "file_path", "unknown_source"),
                         "track_id": getattr(status_doc, "track_id", ""),
-                        # Clear any error messages and processing metadata
+                        # 清空错误信息与处理元数据
                         "error_msg": "",
                         "metadata": {},
                     }
 
-                    # Update the status in to_process_docs as well
+                    # 同步更新 to_process_docs 中的状态
                     status_doc.status = DocStatus.PENDING
                     reset_count += 1
 
-        # Update doc_status storage if there are documents to reset
+        # 若存在需要重置的文档，更新 doc_status 存储
         if docs_to_reset:
             await self.doc_status.upsert(docs_to_reset)
 
@@ -1637,18 +1633,16 @@ class LightRAG:
         split_by_character_only: bool = False,
     ) -> None:
         """
-        Process pending documents by splitting them into chunks, processing
-        each chunk for entity and relation extraction, and updating the
-        document status.
+        处理待处理文档：切分为分块、抽取实体与关系并更新文档状态。
 
-        1. Get all pending, failed, and abnormally terminated processing documents.
-        2. Validate document data consistency and fix any issues
-        3. Split document content into chunks
-        4. Process each chunk for entity and relation extraction
-        5. Update the document status
+        1. 获取所有待处理、失败及异常终止的处理中文档
+        2. 校验并修复文档数据一致性
+        3. 将文档内容切分为分块
+        4. 对每个分块进行实体与关系抽取
+        5. 更新文档状态
         """
 
-        # Get pipeline status shared data and lock
+        # 获取 pipeline_status 的共享数据与锁
         pipeline_status = await get_namespace_data(
             "pipeline_status", workspace=self.workspace
         )
@@ -1656,9 +1650,9 @@ class LightRAG:
             "pipeline_status", workspace=self.workspace
         )
 
-        # Check if another process is already processing the queue
+        # 检查是否有其他进程正在处理队列
         async with pipeline_status_lock:
-            # Ensure only one worker is processing documents
+            # 确保只有一个 worker 处理文档
             if not pipeline_status.get("busy", False):
                 processing_docs, failed_docs, pending_docs = await asyncio.gather(
                     self.doc_status.get_docs_by_status(DocStatus.PROCESSING),
@@ -1681,17 +1675,17 @@ class LightRAG:
                         "job_name": "Default Job",
                         "job_start": datetime.now(timezone.utc).isoformat(),
                         "docs": 0,
-                        "batchs": 0,  # Total number of files to be processed
-                        "cur_batch": 0,  # Number of files already processed
-                        "request_pending": False,  # Clear any previous request
-                        "cancellation_requested": False,  # Initialize cancellation flag
+                        "batchs": 0,  # 待处理文件总数
+                        "cur_batch": 0,  # 已处理文件数
+                        "request_pending": False,  # 清除之前的请求标记
+                        "cancellation_requested": False,  # 初始化取消标记
                         "latest_message": "",
                     }
                 )
-                # Cleaning history_messages without breaking it as a shared list object
+                # 清空 history_messages，保持其共享列表对象不变
                 del pipeline_status["history_messages"][:]
             else:
-                # Another process is busy, just set request flag and return
+                # 其他进程忙碌，设置请求标记后返回
                 pipeline_status["request_pending"] = True
                 logger.info(
                     "Another process is already processing the document queue. Request queued."
@@ -1699,14 +1693,14 @@ class LightRAG:
                 return
 
         try:
-            # Process documents until no more documents or requests
+            # 持续处理，直到没有文档或请求
             while True:
-                # Check for cancellation request at the start of main loop
+                # 在主循环开始时检查取消请求
                 async with pipeline_status_lock:
                     if pipeline_status.get("cancellation_requested", False):
-                        # Clear pending request
+                        # 清除待处理请求
                         pipeline_status["request_pending"] = False
-                        # Celar cancellation flag
+                        # 清除取消标记
                         pipeline_status["cancellation_requested"] = False
 
                         log_message = "Pipeline cancelled by user"
@@ -1714,7 +1708,7 @@ class LightRAG:
                         pipeline_status["latest_message"] = log_message
                         pipeline_status["history_messages"].append(log_message)
 
-                        # Exit directly, skipping request_pending check
+                        # 直接退出，跳过 request_pending 检查
                         return
 
                 if not to_process_docs:
@@ -1724,7 +1718,7 @@ class LightRAG:
                     pipeline_status["history_messages"].append(log_message)
                     break
 
-                # Validate document data consistency and fix any issues as part of the pipeline
+                # 作为管线一部分校验并修复文档一致性
                 to_process_docs = await self._validate_and_fix_document_consistency(
                     to_process_docs, pipeline_status, pipeline_status_lock
                 )
@@ -1741,18 +1735,18 @@ class LightRAG:
                 log_message = f"Processing {len(to_process_docs)} document(s)"
                 logger.info(log_message)
 
-                # Update pipeline_status, batchs now represents the total number of files to be processed
+                # 更新 pipeline_status，batchs 表示待处理文件总数
                 pipeline_status["docs"] = len(to_process_docs)
                 pipeline_status["batchs"] = len(to_process_docs)
                 pipeline_status["cur_batch"] = 0
                 pipeline_status["latest_message"] = log_message
                 pipeline_status["history_messages"].append(log_message)
 
-                # Get first document's file path and total count for job name
+                # 获取第一个文档路径与总数用于任务名称
                 first_doc_id, first_doc = next(iter(to_process_docs.items()))
                 first_doc_path = first_doc.file_path
 
-                # Handle cases where first_doc_path is None
+                # 处理 first_doc_path 为空的情况
                 if first_doc_path:
                     path_prefix = first_doc_path[:20] + (
                         "..." if len(first_doc_path) > 20 else ""
@@ -1764,9 +1758,9 @@ class LightRAG:
                 job_name = f"{path_prefix}[{total_files} files]"
                 pipeline_status["job_name"] = job_name
 
-                # Create a counter to track the number of processed files
+                # 创建计数器以跟踪已处理文件数量
                 processed_count = 0
-                # Create a semaphore to limit the number of concurrent file processing
+                # 创建信号量以限制并发文件处理数量
                 semaphore = asyncio.Semaphore(self.max_parallel_insert)
 
                 async def process_document(
@@ -1778,8 +1772,8 @@ class LightRAG:
                     pipeline_status_lock: asyncio.Lock,
                     semaphore: asyncio.Semaphore,
                 ) -> None:
-                    """Process single document"""
-                    # Initialize variables at the start to prevent UnboundLocalError in error handling
+                    """处理单个文档"""
+                    # 在开始时初始化变量，避免错误处理时出现 UnboundLocalError
                     file_path = "unknown_source"
                     current_file_number = 0
                     file_extraction_stage_ok = False
@@ -1789,22 +1783,22 @@ class LightRAG:
 
                     async with semaphore:
                         nonlocal processed_count
-                        # Initialize to prevent UnboundLocalError in error handling
+                        # 初始化以避免错误处理时 UnboundLocalError
                         first_stage_tasks = []
                         entity_relation_task = None
                         try:
-                            # Check for cancellation before starting document processing
+                            # 开始处理前检查取消请求
                             async with pipeline_status_lock:
                                 if pipeline_status.get("cancellation_requested", False):
                                     raise PipelineCancelledException("User cancelled")
 
-                            # Get file path from status document
+                            # 从状态文档获取文件路径
                             file_path = getattr(
                                 status_doc, "file_path", "unknown_source"
                             )
 
                             async with pipeline_status_lock:
-                                # Update processed file count and save current file number
+                                # 更新已处理文件数并保存当前文件序号
                                 processed_count += 1
                                 current_file_number = (
                                     processed_count  # Save the current file number
@@ -1819,7 +1813,7 @@ class LightRAG:
                                 pipeline_status["latest_message"] = log_message
                                 pipeline_status["history_messages"].append(log_message)
 
-                                # Prevent memory growth: keep only latest 5000 messages when exceeding 10000
+                                # 防止内存增长：超过 10000 条时仅保留最近 5000 条
                                 if len(pipeline_status["history_messages"]) > 10000:
                                     logger.info(
                                         f"Trimming pipeline history from {len(pipeline_status['history_messages'])} to 5000 messages"
@@ -1828,7 +1822,7 @@ class LightRAG:
                                         pipeline_status["history_messages"][-5000:]
                                     )
 
-                            # Get document content from full_docs
+                            # 从 full_docs 获取文档内容
                             content_data = await self.full_docs.get_by_id(doc_id)
                             if not content_data:
                                 raise Exception(
@@ -1836,7 +1830,7 @@ class LightRAG:
                                 )
                             content = content_data["content"]
 
-                            # Call chunking function, supporting both sync and async implementations
+                            # 调用分块函数，支持同步与异步实现
                             chunking_result = self.chunking_func(
                                 self.tokenizer,
                                 content,
@@ -1846,24 +1840,24 @@ class LightRAG:
                                 self.chunk_token_size,
                             )
 
-                            # If result is awaitable, await to get actual result
+                            # 若返回可等待对象，则 await 获取实际结果
                             if inspect.isawaitable(chunking_result):
                                 chunking_result = await chunking_result
 
-                            # Validate return type
+                            # 校验返回类型
                             if not isinstance(chunking_result, (list, tuple)):
                                 raise TypeError(
                                     f"chunking_func must return a list or tuple of dicts, "
                                     f"got {type(chunking_result)}"
                                 )
 
-                            # Build chunks dictionary
+                            # 构建分块字典
                             chunks: dict[str, Any] = {
                                 compute_mdhash_id(dp["content"], prefix="chunk-"): {
                                     **dp,
                                     "full_doc_id": doc_id,
-                                    "file_path": file_path,  # Add file path to each chunk
-                                    "llm_cache_list": [],  # Initialize empty LLM cache list for each chunk
+                                    "file_path": file_path,  # 为每个分块添加文件路径
+                                    "llm_cache_list": [],  # 为每个分块初始化空的 LLM 缓存列表
                                 }
                                 for dp in chunking_result
                             }
@@ -1871,16 +1865,16 @@ class LightRAG:
                             if not chunks:
                                 logger.warning("No document chunks to process")
 
-                            # Record processing start time
+                            # 记录处理开始时间
                             processing_start_time = int(time.time())
 
-                            # Check for cancellation before entity extraction
+                            # 实体抽取前检查取消请求
                             async with pipeline_status_lock:
                                 if pipeline_status.get("cancellation_requested", False):
                                     raise PipelineCancelledException("User cancelled")
 
-                            # Process document in two stages
-                            # Stage 1: Process text chunks and docs (parallel execution)
+                            # 分两个阶段处理文档
+                            # 阶段 1：处理文本分块与文档（并行执行）
                             doc_status_task = asyncio.create_task(
                                 self.doc_status.upsert(
                                     {
@@ -1889,7 +1883,7 @@ class LightRAG:
                                             "chunks_count": len(chunks),
                                             "chunks_list": list(
                                                 chunks.keys()
-                                            ),  # Save chunks list
+                                            ),  # 保存分块列表
                                             "content_summary": status_doc.content_summary,
                                             "content_length": status_doc.content_length,
                                             "created_at": status_doc.created_at,
@@ -1897,7 +1891,7 @@ class LightRAG:
                                                 timezone.utc
                                             ).isoformat(),
                                             "file_path": file_path,
-                                            "track_id": status_doc.track_id,  # Preserve existing track_id
+                                            "track_id": status_doc.track_id,  # 保留已有 track_id
                                             "metadata": {
                                                 "processing_start_time": processing_start_time
                                             },
@@ -1912,7 +1906,7 @@ class LightRAG:
                                 self.text_chunks.upsert(chunks)
                             )
 
-                            # First stage tasks (parallel execution)
+                            # 第一阶段任务（并行执行）
                             first_stage_tasks = [
                                 doc_status_task,
                                 chunks_vdb_task,
@@ -1920,10 +1914,10 @@ class LightRAG:
                             ]
                             entity_relation_task = None
 
-                            # Execute first stage tasks
+                            # 执行第一阶段任务
                             await asyncio.gather(*first_stage_tasks)
 
-                            # Stage 2: Process entity relation graph (after text_chunks are saved)
+                            # 阶段 2：处理实体关系图（在 text_chunks 保存后）
                             entity_relation_task = asyncio.create_task(
                                 self._process_extract_entities(
                                     chunks, pipeline_status, pipeline_status_lock
@@ -1933,9 +1927,9 @@ class LightRAG:
                             file_extraction_stage_ok = True
 
                         except Exception as e:
-                            # Check if this is a user cancellation
+                            # 判断是否为用户取消
                             if isinstance(e, PipelineCancelledException):
-                                # User cancellation - log brief message only, no traceback
+                                # 用户取消：仅记录简要信息，不打印堆栈
                                 error_msg = f"User cancelled {current_file_number}/{total_files}: {file_path}"
                                 logger.warning(error_msg)
                                 async with pipeline_status_lock:
@@ -1944,7 +1938,7 @@ class LightRAG:
                                         error_msg
                                     )
                             else:
-                                # Other exceptions - log with traceback
+                                # 其他异常：记录堆栈
                                 logger.error(traceback.format_exc())
                                 error_msg = f"Failed to extract document {current_file_number}/{total_files}: {file_path}"
                                 logger.error(error_msg)
@@ -1957,7 +1951,7 @@ class LightRAG:
                                         error_msg
                                     )
 
-                            # Cancel tasks that are not yet completed
+                            # 取消尚未完成的任务
                             all_tasks = first_stage_tasks + (
                                 [entity_relation_task] if entity_relation_task else []
                             )
@@ -1965,7 +1959,7 @@ class LightRAG:
                                 if task and not task.done():
                                     task.cancel()
 
-                            # Persistent llm cache with error handling
+                            # 持久化 LLM 缓存并处理错误
                             if self.llm_response_cache:
                                 try:
                                     await self.llm_response_cache.index_done_callback()
@@ -1974,10 +1968,10 @@ class LightRAG:
                                         f"Failed to persist LLM cache: {persist_error}"
                                     )
 
-                            # Record processing end time for failed case
+                            # 记录失败情况下的处理结束时间
                             processing_end_time = int(time.time())
 
-                            # Update document status to failed
+                            # 将文档状态更新为失败
                             await self.doc_status.upsert(
                                 {
                                     doc_id: {
@@ -1990,7 +1984,7 @@ class LightRAG:
                                             timezone.utc
                                         ).isoformat(),
                                         "file_path": file_path,
-                                        "track_id": status_doc.track_id,  # Preserve existing track_id
+                                        "track_id": status_doc.track_id,  # 保留已有 track_id
                                         "metadata": {
                                             "processing_start_time": processing_start_time,
                                             "processing_end_time": processing_end_time,
@@ -1999,7 +1993,7 @@ class LightRAG:
                                 }
                             )
 
-                        # Concurrency is controlled by keyed lock for individual entities and relationships
+                        # 并发由实体/关系的键控锁控制
                         if file_extraction_stage_ok:
                             try:
                                 # Check for cancellation before merge
@@ -2011,9 +2005,9 @@ class LightRAG:
                                             "User cancelled"
                                         )
 
-                                # Use chunk_results from entity_relation_task
+                                # 使用来自 entity_relation_task 的 chunk_results
                                 await merge_nodes_and_edges(
-                                    chunk_results=chunk_results,  # result collected from entity_relation_task
+                                    chunk_results=chunk_results,  # 从 entity_relation_task 收集的结果
                                     knowledge_graph_inst=self.chunk_entity_relation_graph,
                                     entity_vdb=self.entities_vdb,
                                     relationships_vdb=self.relationships_vdb,
@@ -2031,7 +2025,7 @@ class LightRAG:
                                     file_path=file_path,
                                 )
 
-                                # Record processing end time
+                                # 记录处理结束时间
                                 processing_end_time = int(time.time())
 
                                 await self.doc_status.upsert(
@@ -2047,7 +2041,7 @@ class LightRAG:
                                                 timezone.utc
                                             ).isoformat(),
                                             "file_path": file_path,
-                                            "track_id": status_doc.track_id,  # Preserve existing track_id
+                                            "track_id": status_doc.track_id,  # 保留现有的 track_id
                                             "metadata": {
                                                 "processing_start_time": processing_start_time,
                                                 "processing_end_time": processing_end_time,
@@ -2056,7 +2050,7 @@ class LightRAG:
                                     }
                                 )
 
-                                # Call _insert_done after processing each file
+                                # 在处理完每个文件后调用 _insert_done
                                 await self._insert_done()
 
                                 async with pipeline_status_lock:
@@ -2068,9 +2062,9 @@ class LightRAG:
                                     )
 
                             except Exception as e:
-                                # Check if this is a user cancellation
+                                # 检查这是否是用户取消操作
                                 if isinstance(e, PipelineCancelledException):
-                                    # User cancellation - log brief message only, no traceback
+                                    # 用户取消 - 仅记录简短消息，不记录追溯信息
                                     error_msg = f"User cancelled during merge {current_file_number}/{total_files}: {file_path}"
                                     logger.warning(error_msg)
                                     async with pipeline_status_lock:
@@ -2079,7 +2073,7 @@ class LightRAG:
                                             error_msg
                                         )
                                 else:
-                                    # Other exceptions - log with traceback
+                                    # 其他异常 - 记录完整的追溯信息
                                     logger.error(traceback.format_exc())
                                     error_msg = f"Merging stage failed in document {current_file_number}/{total_files}: {file_path}"
                                     logger.error(error_msg)
@@ -2092,7 +2086,7 @@ class LightRAG:
                                             error_msg
                                         )
 
-                                # Persistent llm cache with error handling
+                                # 持久化 llm 缓存，带有错误处理
                                 if self.llm_response_cache:
                                     try:
                                         await self.llm_response_cache.index_done_callback()
@@ -2101,10 +2095,10 @@ class LightRAG:
                                             f"Failed to persist LLM cache: {persist_error}"
                                         )
 
-                                # Record processing end time for failed case
+                                # 记录失败情况下的处理结束时间
                                 processing_end_time = int(time.time())
 
-                                # Update document status to failed
+                                # 将文档状态更新为失败
                                 await self.doc_status.upsert(
                                     {
                                         doc_id: {
@@ -2115,7 +2109,7 @@ class LightRAG:
                                             "created_at": status_doc.created_at,
                                             "updated_at": datetime.now().isoformat(),
                                             "file_path": file_path,
-                                            "track_id": status_doc.track_id,  # Preserve existing track_id
+                                            "track_id": status_doc.track_id,  # 保留现有的 track_id
                                             "metadata": {
                                                 "processing_start_time": processing_start_time,
                                                 "processing_end_time": processing_end_time,
@@ -2124,7 +2118,7 @@ class LightRAG:
                                     }
                                 )
 
-                # Create processing tasks for all documents
+                # 为所有文档创建处理任务
                 doc_tasks = []
                 for doc_id, status_doc in to_process_docs.items():
                     doc_tasks.append(
@@ -2139,27 +2133,27 @@ class LightRAG:
                         )
                     )
 
-                # Wait for all document processing to complete
+                # 等待所有文档处理完成
                 try:
                     await asyncio.gather(*doc_tasks)
                 except PipelineCancelledException:
-                    # Cancel all remaining tasks
+                    # 取消所有剩余任务
                     for task in doc_tasks:
                         if not task.done():
                             task.cancel()
 
-                    # Wait for all tasks to complete cancellation
+                    # 等待所有任务完成取消
                     await asyncio.wait(doc_tasks, return_when=asyncio.ALL_COMPLETED)
 
-                    # Exit directly (document statuses already updated in process_document)
+                    # 直接退出（文档状态已在 process_document 中更新）
                     return
 
-                # Check if there's a pending request to process more documents (with lock)
+                # 检查是否有待处理更多文档的请求（使用锁）
                 has_pending_request = False
                 async with pipeline_status_lock:
                     has_pending_request = pipeline_status.get("request_pending", False)
                     if has_pending_request:
-                        # Clear the request flag before checking for more documents
+                        # 在检查更多文档之前清除请求标志
                         pipeline_status["request_pending"] = False
 
                 if not has_pending_request:
@@ -2170,7 +2164,7 @@ class LightRAG:
                 pipeline_status["latest_message"] = log_message
                 pipeline_status["history_messages"].append(log_message)
 
-                # Check for pending documents again
+                # 再次检查待处理文档
                 processing_docs, failed_docs, pending_docs = await asyncio.gather(
                     self.doc_status.get_docs_by_status(DocStatus.PROCESSING),
                     self.doc_status.get_docs_by_status(DocStatus.FAILED),
@@ -2185,11 +2179,11 @@ class LightRAG:
         finally:
             log_message = "Enqueued document processing pipeline stopped"
             logger.info(log_message)
-            # Always reset busy status and cancellation flag when done or if an exception occurs (with lock)
+            # 当完成或发生异常时，始终重置繁忙状态和取消标志（使用锁）
             async with pipeline_status_lock:
                 pipeline_status["busy"] = False
                 pipeline_status["cancellation_requested"] = (
-                    False  # Always reset cancellation flag
+                    False  # 始终重置取消标志
                 )
                 pipeline_status["latest_message"] = log_message
                 pipeline_status["history_messages"].append(log_message)
@@ -2259,7 +2253,7 @@ class LightRAG:
     ) -> None:
         update_storage = False
         try:
-            # Insert chunks into vector storage
+            # 将块插入向量存储
             all_chunks_data: dict[str, dict[str, str]] = {}
             chunk_to_source_map: dict[str, str] = {}
             for chunk_data in custom_kg.get("chunks", []):
@@ -2295,7 +2289,7 @@ class LightRAG:
                     self.text_chunks.upsert(all_chunks_data),
                 )
 
-            # Insert entities into knowledge graph
+            # 将实体插入知识图谱
             all_entities_data: list[dict[str, str]] = []
             for entity_data in custom_kg.get("entities", []):
                 entity_name = entity_data["entity_name"]
@@ -2305,13 +2299,13 @@ class LightRAG:
                 source_id = chunk_to_source_map.get(source_chunk_id, "UNKNOWN")
                 file_path = entity_data.get("file_path", "custom_kg")
 
-                # Log if source_id is UNKNOWN
+                # 如果 source_id 是 UNKNOWN 则记录日志
                 if source_id == "UNKNOWN":
                     logger.warning(
                         f"Entity '{entity_name}' has an UNKNOWN source_id. Please check the source mapping."
                     )
 
-                # Prepare node data
+                # 准备节点数据
                 node_data: dict[str, str] = {
                     "entity_id": entity_name,
                     "entity_type": entity_type,
@@ -2320,7 +2314,7 @@ class LightRAG:
                     "file_path": file_path,
                     "created_at": int(time.time()),
                 }
-                # Insert node data into the knowledge graph
+                # 将节点数据插入知识图谱
                 await self.chunk_entity_relation_graph.upsert_node(
                     entity_name, node_data=node_data
                 )
@@ -2328,7 +2322,7 @@ class LightRAG:
                 all_entities_data.append(node_data)
                 update_storage = True
 
-            # Insert relationships into knowledge graph
+            # 将关系插入知识图谱
             all_relationships_data: list[dict[str, str]] = []
             for relationship_data in custom_kg.get("relationships", []):
                 src_id = relationship_data["src_id"]
@@ -2340,13 +2334,13 @@ class LightRAG:
                 source_id = chunk_to_source_map.get(source_chunk_id, "UNKNOWN")
                 file_path = relationship_data.get("file_path", "custom_kg")
 
-                # Log if source_id is UNKNOWN
+                # 如果 source_id 是 UNKNOWN 则记录日志
                 if source_id == "UNKNOWN":
                     logger.warning(
                         f"Relationship from '{src_id}' to '{tgt_id}' has an UNKNOWN source_id. Please check the source mapping."
                     )
 
-                # Check if nodes exist in the knowledge graph
+                # 检查节点是否存在于知识图谱中
                 for need_insert_id in [src_id, tgt_id]:
                     if not (
                         await self.chunk_entity_relation_graph.has_node(need_insert_id)
@@ -2363,7 +2357,7 @@ class LightRAG:
                             },
                         )
 
-                # Insert edge into the knowledge graph
+                # 将边插入知识图谱
                 await self.chunk_entity_relation_graph.upsert_edge(
                     src_id,
                     tgt_id,
@@ -2390,7 +2384,7 @@ class LightRAG:
                 all_relationships_data.append(edge_data)
                 update_storage = True
 
-            # Insert entities into vector storage with consistent format
+            # 以一致的格式将实体插入向量存储
             data_for_vdb = {
                 compute_mdhash_id(dp["entity_name"], prefix="ent-"): {
                     "content": dp["entity_name"] + "\n" + dp["description"],
@@ -2404,7 +2398,7 @@ class LightRAG:
             }
             await self.entities_vdb.upsert(data_for_vdb)
 
-            # Insert relationships into vector storage with consistent format
+            # 以一致的格式将关系插入向量存储
             data_for_vdb = {
                 compute_mdhash_id(dp["src_id"] + dp["tgt_id"], prefix="rel-"): {
                     "src_id": dp["src_id"],
@@ -2434,15 +2428,15 @@ class LightRAG:
         system_prompt: str | None = None,
     ) -> str | Iterator[str]:
         """
-        Perform a sync query.
+        执行同步查询。
 
         Args:
-            query (str): The query to be executed.
-            param (QueryParam): Configuration parameters for query execution.
-            prompt (Optional[str]): Custom prompts for fine-tuned control over the system's behavior. Defaults to None, which uses PROMPTS["rag_response"].
+            query (str): 要执行的查询。
+            param (QueryParam): 查询执行的配置参数。
+            prompt (Optional[str]): 用于对系统行为进行精细控制的自定义提示。默认为 None，使用 PROMPTS["rag_response"]。
 
         Returns:
-            str: The result of the query execution.
+            str: 查询执行的结果。
         """
         loop = always_get_an_event_loop()
 
@@ -2455,26 +2449,25 @@ class LightRAG:
         system_prompt: str | None = None,
     ) -> str | AsyncIterator[str]:
         """
-        Perform a async query (backward compatibility wrapper).
+        执行异步查询（向后兼容包装器）。
 
-        This function is now a wrapper around aquery_llm that maintains backward compatibility
-        by returning only the LLM response content in the original format.
+        此函数现在是 aquery_llm 的包装器，通过仅返回原始格式的 LLM 响应内容来保持向后兼容性。
 
         Args:
-            query (str): The query to be executed.
-            param (QueryParam): Configuration parameters for query execution.
-                If param.model_func is provided, it will be used instead of the global model.
-            system_prompt (Optional[str]): Custom prompts for fine-tuned control over the system's behavior. Defaults to None, which uses PROMPTS["rag_response"].
+            query (str): 要执行的查询。
+            param (QueryParam): 查询执行的配置参数。
+                如果提供了 param.model_func，将使用它而不是全局模型。
+            system_prompt (Optional[str]): 用于对系统行为进行精细控制的自定义提示。默认为 None，使用 PROMPTS["rag_response"]。
 
         Returns:
-            str | AsyncIterator[str]: The LLM response content.
-                - Non-streaming: Returns str
-                - Streaming: Returns AsyncIterator[str]
+            str | AsyncIterator[str]: LLM 响应内容。
+                - 非流式：返回 str
+                - 流式：返回 AsyncIterator[str]
         """
-        # Call the new aquery_llm function to get complete results
+        # 调用新的 aquery_llm 函数以获取完整结果
         result = await self.aquery_llm(query, param, system_prompt)
 
-        # Extract and return only the LLM response for backward compatibility
+        # 提取并仅返回 LLM 响应以保持向后兼容性
         llm_response = result.get("llm_response", {})
 
         if llm_response.get("is_streaming"):
@@ -2488,17 +2481,16 @@ class LightRAG:
         param: QueryParam = QueryParam(),
     ) -> dict[str, Any]:
         """
-        Synchronous data retrieval API: returns structured retrieval results without LLM generation.
+        同步数据检索 API：返回结构化的检索结果，不生成 LLM 内容。
 
-        This function is the synchronous version of aquery_data, providing the same functionality
-        for users who prefer synchronous interfaces.
+        此函数是 aquery_data 的同步版本，为偏好同步接口的用户提供相同的功能。
 
         Args:
-            query: Query text for retrieval.
-            param: Query parameters controlling retrieval behavior (same as aquery).
+            query: 用于检索的查询文本。
+            param: 控制检索行为的查询参数（与 aquery 相同）。
 
         Returns:
-            dict[str, Any]: Same structured data result as aquery_data.
+            dict[str, Any]: 与 aquery_data 相同的结构化数据结果。
         """
         loop = always_get_an_event_loop()
         return loop.run_until_complete(self.aquery_data(query, param))
@@ -2509,19 +2501,19 @@ class LightRAG:
         param: QueryParam = QueryParam(),
     ) -> dict[str, Any]:
         """
-        Asynchronous data retrieval API: returns structured retrieval results without LLM generation.
+        异步数据检索 API：返回结构化的检索结果，不生成 LLM 内容。
 
-        This function reuses the same logic as aquery but stops before LLM generation,
-        returning the final processed entities, relationships, and chunks data that would be sent to LLM.
+        此函数重用与 aquery 相同的逻辑，但在 LLM 生成之前停止，
+        返回将被发送给 LLM 的最终处理过的实体、关系和块数据。
 
         Args:
-            query: Query text for retrieval.
-            param: Query parameters controlling retrieval behavior (same as aquery).
+            query: 用于检索的查询文本。
+            param: 控制检索行为的查询参数（与 aquery 相同）。
 
         Returns:
-            dict[str, Any]: Structured data result in the following format:
+            dict[str, Any]: 以下格式的结构化数据结果：
 
-            **Success Response:**
+            **成功响应：**
             ```python
             {
                 "status": "success",
@@ -2616,13 +2608,13 @@ class LightRAG:
         """
         global_config = asdict(self)
 
-        # Create a copy of param to avoid modifying the original
+        # 创建 param 的副本以避免修改原始值
         data_param = QueryParam(
             mode=param.mode,
-            only_need_context=True,  # Skip LLM generation, only get context and data
+            only_need_context=True,  # 跳过 LLM 生成，仅获取上下文和数据
             only_need_prompt=False,
             response_type=param.response_type,
-            stream=False,  # Data retrieval doesn't need streaming
+            stream=False,  # 数据检索不需要流式传输
             top_k=param.top_k,
             chunk_top_k=param.chunk_top_k,
             max_entity_tokens=param.max_entity_tokens,
@@ -2665,12 +2657,12 @@ class LightRAG:
             )
         elif data_param.mode == "bypass":
             logger.debug("[aquery_data] Using bypass mode")
-            # bypass mode returns empty data using convert_to_user_format
+            # bypass 模式使用 convert_to_user_format 返回空数据
             empty_raw_data = convert_to_user_format(
-                [],  # no entities
-                [],  # no relationships
-                [],  # no chunks
-                [],  # no references
+                [],  # 无实体
+                [],  # 无关系
+                [],  # 无块
+                [],  # 无引用
                 "bypass",
             )
             query_result = QueryResult(content="", raw_data=empty_raw_data)
@@ -2692,10 +2684,10 @@ class LightRAG:
             }
             logger.info("[aquery_data] Query returned no results.")
         else:
-            # Extract raw_data from QueryResult
+            # 从 QueryResult 提取 raw_data
             final_data = query_result.raw_data or {}
 
-            # Log final result counts - adapt to new data format from convert_to_user_format
+            # 记录最终结果计数 - 适配 convert_to_user_format 的新数据格式
             if final_data and "data" in final_data:
                 data_section = final_data["data"]
                 entities_count = len(data_section.get("entities", []))
@@ -2717,18 +2709,18 @@ class LightRAG:
         system_prompt: str | None = None,
     ) -> dict[str, Any]:
         """
-        Asynchronous complete query API: returns structured retrieval results with LLM generation.
+        异步完整查询 API：返回结构化的检索结果和 LLM 生成内容。
 
-        This function performs a single query operation and returns both structured data and LLM response,
-        based on the original aquery logic to avoid duplicate calls.
+        此函数执行单次查询操作，返回结构化数据和 LLM 响应，
+        基于原始的 aquery 逻辑以避免重复调用。
 
         Args:
-            query: Query text for retrieval and LLM generation.
-            param: Query parameters controlling retrieval and LLM behavior.
-            system_prompt: Optional custom system prompt for LLM generation.
+            query: 用于检索和 LLM 生成的查询文本。
+            param: 控制检索和 LLM 行为的查询参数。
+            system_prompt: 用于 LLM 生成的可选自定义系统提示。
 
         Returns:
-            dict[str, Any]: Complete response with structured data and LLM response.
+            dict[str, Any]: 包含结构化数据和 LLM 响应的完整响应。
         """
         logger.debug(f"[aquery_llm] Query param: {param}")
 
@@ -2760,9 +2752,9 @@ class LightRAG:
                     system_prompt=system_prompt,
                 )
             elif param.mode == "bypass":
-                # Bypass mode: directly use LLM without knowledge retrieval
+                # Bypass 模式：直接使用 LLM，不进行知识检索
                 use_llm_func = param.model_func or global_config["llm_model_func"]
-                # Apply higher priority (8) to entity/relation summary tasks
+                # 对实体/关系总结任务应用更高的优先级 (8)
                 use_llm_func = partial(use_llm_func, _priority=8)
 
                 param.stream = True if param.stream is None else param.stream
@@ -2802,7 +2794,7 @@ class LightRAG:
 
             await self._query_done()
 
-            # Check if query_result is None
+            # 检查 query_result 是否为 None
             if query_result is None:
                 return {
                     "status": "failure",
@@ -2819,7 +2811,7 @@ class LightRAG:
                     },
                 }
 
-            # Extract structured data from query result
+            # 从查询结果中提取结构化数据
             raw_data = query_result.raw_data or {}
             raw_data["llm_response"] = {
                 "content": query_result.content
@@ -2835,7 +2827,7 @@ class LightRAG:
 
         except Exception as e:
             logger.error(f"Query failed: {e}")
-            # Return error response
+            # 返回错误响应
             return {
                 "status": "failure",
                 "message": f"Query failed: {str(e)}",
@@ -2855,18 +2847,17 @@ class LightRAG:
         system_prompt: str | None = None,
     ) -> dict[str, Any]:
         """
-        Synchronous complete query API: returns structured retrieval results with LLM generation.
+        同步完整查询 API：返回结构化的检索结果和 LLM 生成内容。
 
-        This function is the synchronous version of aquery_llm, providing the same functionality
-        for users who prefer synchronous interfaces.
+        此函数是 aquery_llm 的同步版本，为偏好同步接口的用户提供相同的功能。
 
         Args:
-            query: Query text for retrieval and LLM generation.
-            param: Query parameters controlling retrieval and LLM behavior.
-            system_prompt: Optional custom system prompt for LLM generation.
+            query: 用于检索和 LLM 生成的查询文本。
+            param: 控制检索和 LLM 行为的查询参数。
+            system_prompt: 用于 LLM 生成的可选自定义系统提示。
 
         Returns:
-            dict[str, Any]: Same complete response format as aquery_llm.
+            dict[str, Any]: 与 aquery_llm 相同的完整响应格式。
         """
         loop = always_get_an_event_loop()
         return loop.run_until_complete(self.aquery_llm(query, param, system_prompt))
@@ -2875,12 +2866,12 @@ class LightRAG:
         await self.llm_response_cache.index_done_callback()
 
     async def aclear_cache(self) -> None:
-        """Clear all cache data from the LLM response cache storage.
+        """从 LLM 响应缓存存储中清除所有缓存数据。
 
-        This method clears all cached LLM responses regardless of mode.
+        此方法清除所有缓存的 LLM 响应，不管什么模式。
 
         Example:
-            # Clear all cache
+            # 清除所有缓存
             await rag.aclear_cache()
         """
         if not self.llm_response_cache:
@@ -2888,7 +2879,7 @@ class LightRAG:
             return
 
         try:
-            # Clear all cache using drop method
+            # 使用 drop 方法清除所有缓存
             success = await self.llm_response_cache.drop()
             if success:
                 logger.info("Cleared all cache")
@@ -2901,81 +2892,81 @@ class LightRAG:
             logger.error(f"Error while clearing cache: {e}")
 
     def clear_cache(self) -> None:
-        """Synchronous version of aclear_cache."""
+        """同步版本的 aclear_cache。"""
         return always_get_an_event_loop().run_until_complete(self.aclear_cache())
 
     async def get_docs_by_status(
         self, status: DocStatus
     ) -> dict[str, DocProcessingStatus]:
-        """Get documents by status
+        """根据状态获取文档
 
         Returns:
-            Dict with document id is keys and document status is values
+            以文档 id 为键、文档状态为值的字典
         """
         return await self.doc_status.get_docs_by_status(status)
 
     async def aget_docs_by_ids(
         self, ids: str | list[str]
     ) -> dict[str, DocProcessingStatus]:
-        """Retrieves the processing status for one or more documents by their IDs.
+        """根据 ID 检索一个或多个文档的处理状态。
 
         Args:
-            ids: A single document ID (string) or a list of document IDs (list of strings).
+            ids: 单个文档 ID（字符串）或文档 ID 列表（字符串列表）。
 
         Returns:
-            A dictionary where keys are the document IDs for which a status was found,
-            and values are the corresponding DocProcessingStatus objects. IDs that
-            are not found in the storage will be omitted from the result dictionary.
+            一个字典，其中键是找到状态的文档 ID，
+            值是相应的 DocProcessingStatus 对象。在存储中
+            未找到的 ID 将从结果字典中省略。
         """
         if isinstance(ids, str):
-            # Ensure input is always a list of IDs for uniform processing
+            # 确保输入始终是 ID 列表以便统一处理
             id_list = [ids]
         elif (
             ids is None
-        ):  # Handle potential None input gracefully, although type hint suggests str/list
+        ):  # 优雅处理可能的 None 输入，尽管类型提示指示 str/list
             logger.warning(
                 "aget_docs_by_ids called with None input, returning empty dict."
             )
             return {}
         else:
-            # Assume input is already a list if not a string
+            # 如果不是字符串，假定输入已经是列表
             id_list = ids
 
-        # Return early if the final list of IDs is empty
+        # 如果最终 ID 列表为空，则提前返回
         if not id_list:
             logger.debug("aget_docs_by_ids called with an empty list of IDs.")
             return {}
 
-        # Create tasks to fetch document statuses concurrently using the doc_status storage
+        # 创建任务使用 doc_status 存储并发获取文档状态
         tasks = [self.doc_status.get_by_id(doc_id) for doc_id in id_list]
-        # Execute tasks concurrently and gather the results. Results maintain order.
-        # Type hint indicates results can be DocProcessingStatus or None if not found.
+        # 并发执行任务并收集结果。结果保持顺序。
+        # 类型提示表明结果可以是 DocProcessingStatus 或 None（如果未找到）。
         results_list: list[Optional[DocProcessingStatus]] = await asyncio.gather(*tasks)
 
-        # Build the result dictionary, mapping found IDs to their statuses
+        # 构建结果字典，将找到的 ID 映射到它们的状态
         found_statuses: dict[str, DocProcessingStatus] = {}
-        # Keep track of IDs for which no status was found (for logging purposes)
+        # 跟踪未找到状态的 ID（用于记录）
         not_found_ids: list[str] = []
 
-        # Iterate through the results, correlating them back to the original IDs
+        # 遍历结果，将它们关联回原始 ID
         for i, status_obj in enumerate(results_list):
             doc_id = id_list[
                 i
-            ]  # Get the original ID corresponding to this result index
+            ]  # 获取对应此结果索引的原始 ID
             if status_obj:
-                # If a status object was returned (not None), add it to the result dict
+                # 如果返回了状态对象（不是 None），将其添加到结果字典
                 found_statuses[doc_id] = status_obj
             else:
-                # If status_obj is None, the document ID was not found in storage
+                # 如果 status_obj 是 None，则在存储中未找到文档 ID
                 not_found_ids.append(doc_id)
 
-        # Log a warning if any of the requested document IDs were not found
+        # 如果任何请求的文档 ID 未找到，记录警告
         if not_found_ids:
             logger.warning(
                 f"Document statuses not found for the following IDs: {not_found_ids}"
             )
 
-        # Return the dictionary containing statuses only for the found document IDs
+        # 返回仅包含找到的文档 ID 状态的字典
         return found_statuses
 
     async def adelete_by_doc_id(

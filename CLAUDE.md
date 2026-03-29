@@ -6,6 +6,19 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 LightRAG is a Retrieval-Augmented Generation (RAG) framework that uses graph-based knowledge representation for enhanced information retrieval. The system extracts entities and relationships from documents, builds a knowledge graph, and uses multi-modal retrieval (local, global, hybrid, mix, naive) for queries.
 
+### Package Structure
+- `lightrag/`: Core Python package
+  - `lightrag.py`: Main LightRAG class
+  - `operate.py`: Core extraction and query operations
+  - `base.py`: Abstract base classes for storage backends
+  - `kg/`: Storage implementations (JSON, NetworkX, Neo4j, PostgreSQL, MongoDB, Redis, Milvus, Qdrant, Faiss, Memgraph)
+  - `llm/`: LLM provider bindings (OpenAI, Ollama, Azure, Gemini, Bedrock, Anthropic, etc.)
+  - `api/`: FastAPI server with REST endpoints and WebUI
+  - `utils*.py`: Helper utilities for various operations
+- `lightrag_webui/`: React 19 + TypeScript web interface (Bun + Vite)
+- `tests/`: Test suite (mirrors feature folders)
+- Root-level `test_*.py`: Specific integration tests
+
 ## Core Architecture
 
 ### Key Components
@@ -48,13 +61,20 @@ Workspace isolation is implemented differently per storage type (subdirectories 
 uv sync
 source .venv/bin/activate  # Or: .venv\Scripts\activate on Windows
 
-# Install with API support
-uv sync --extra api
+# Alternative: Using pip/venv
+python -m venv .venv && source .venv/bin/activate
+pip install -e .              # Core package
+pip install -e .[api]         # With API support
 
-# Install specific extras
-uv sync --extra offline-storage  # Storage backends
-uv sync --extra offline-llm      # LLM providers
-uv sync --extra test             # Testing dependencies
+# Install with specific extras (uv)
+uv sync --extra api               # API server and WebUI
+uv sync --extra offline-storage   # Storage backends (Redis, Neo4j, PostgreSQL, MongoDB, Milvus, Qdrant)
+uv sync --extra offline-llm       # LLM providers (OpenAI, Anthropic, Ollama, Gemini, Bedrock, etc.)
+uv sync --extra offline           # Complete offline package (api + storage + llm)
+uv sync --extra test              # Testing dependencies
+uv sync --extra evaluation        # RAGAS evaluation framework
+uv sync --extra observability     # Langfuse tracing
+uv sync --extra docling           # Advanced document processing (not compatible with macOS gunicorn multi-worker)
 ```
 
 ### API Server
@@ -96,6 +116,16 @@ python -m pytest tests --test-workers 4
 ### Linting
 ```bash
 ruff check .
+ruff check . --fix  # Auto-fix issues
+```
+
+### Additional CLI Tools
+```bash
+# Download tiktoken cache for offline deployment
+lightrag-download-cache
+
+# Clean LLM query cache
+lightrag-clean-llmqc
 ```
 
 ## Key Implementation Patterns
@@ -329,3 +359,28 @@ Set `LIGHTRAG_*` variables for integration tests:
 - Significantly improves retrieval quality
 - Recommended models: `BAAI/bge-reranker-v2-m3`, Jina rerankers
 - Use "mix" mode when reranker is enabled
+
+### API Server Deployment
+- Single-worker mode: Use `lightrag-server` or `uvicorn` (supports all features including docling on macOS)
+- Multi-worker mode: Use `lightrag-gunicorn` (NOT compatible with docling extra on macOS due to fork-safety issues with PyTorch/Objective-C frameworks)
+- Configure via `.env` file (copy from `env.example`)
+- WebUI must be built with `bun run build` before server start in production
+- API authentication via `X-API-Key` header or JWT tokens (configured in AUTH_ACCOUNTS)
+
+### Document Processing
+- Supported formats: TXT, PDF, DOCX, PPTX, XLSX
+- Optional advanced processing: Install `docling` extra (not compatible with macOS multi-worker mode)
+- Configure chunk size (500-1500 recommended), entity types, and summary settings in `.env`
+- Processing is async and tracked via DOC_STATUS_STORAGE
+
+## Learning Documentation Style Guide
+
+The user is writing learning notes in `my_lightrag_learning/`. When writing or editing these documents, follow these rules:
+
+1. **No Python source code blocks** — use ASCII flow diagrams and JSON data examples instead. The reader wants to understand design intent, not read code.
+2. **ASCII diagrams for flows** — use `→`, `├──`, `└──`, `↓`, `▼` to show data flows and pipelines.
+3. **Natural language for mechanisms** — explain "what it does" and "why it exists" in plain Chinese sentences. Never walk through code line by line.
+4. **Source code references are rare** — only cite a function name (e.g. `process_chunks_unified`) as a location hint when truly necessary. Never cite line number ranges like `utils.py:2730-2738`.
+5. **Tables for comparisons and configs** — use markdown tables instead of code blocks for parameter lists and comparisons.
+6. **Section structure** — each storage/concept gets: what it stores → why it exists → role in insert/query/delete → relationship to other components.
+7. **Feynman style** — explain with concrete examples (e.g. "糖尿病" as the entity name). Ask "why" before "how".
